@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Interpreter.Ast/Interpreter.Ast.csproj" />
+    <Project Path="src\Interpreter.Cli\Interpreter.Cli.csproj" Type="Classic C#" />
     <Project Path="src\Interpreter.Runtime\Interpreter.Runtime.csproj" Type="Classic C#" />
   </Folder>
 </Solution>
