@@ -175,7 +175,7 @@ public static class AstJsonParser
         JsonElement element,
         string path)
     {
-        if (element.ValueKind == JsonValueKind.String)
+        if (element.ValueKind != JsonValueKind.String)
         {
             throw new AstJsonException(
                 $"{path}: binary operator must be a string");
@@ -249,7 +249,7 @@ public static class AstJsonParser
         {
             char character = identifier[index];
 
-            if (!char.IsLetterOrDigit(character)
+            if (!char.IsAsciiLetterOrDigit(character)
                 && character is not '_' and not '\'')
             {
                 return false;
