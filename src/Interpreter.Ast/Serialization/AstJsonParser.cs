@@ -34,8 +34,8 @@ public static class AstJsonParser
                     $"{path}: expected \"skip\", got {element.GetRawText()}");
         }
 
-        var property = GetOnlyProperty(element, path);
-        var propertyPath = $"{path}.{property.Name}";
+        JsonProperty property = GetOnlyProperty(element, path);
+        string propertyPath = $"{path}.{property.Name}";
 
         return property.Name switch
         {
@@ -138,7 +138,7 @@ public static class AstJsonParser
     {
         EnsureObject(element, path);
 
-        if (element.TryGetProperty("const", out var constant))
+        if (element.TryGetProperty("const", out JsonElement constant))
         {
             EnsureObjectPropertyCount(element, path, 1);
 
@@ -146,7 +146,7 @@ public static class AstJsonParser
                 ParseConstant(constant, $"{path}.const"));
         }
 
-        if (element.TryGetProperty("var", out var variable))
+        if (element.TryGetProperty("var", out JsonElement variable))
         {
             EnsureObjectPropertyCount(element, path, 1);
 
@@ -154,7 +154,7 @@ public static class AstJsonParser
                 ParseIdentifier(variable, $"{path}.var"));
         }
 
-        if (element.TryGetProperty("binop", out var binaryOperator))
+        if (element.TryGetProperty("binop", out JsonElement binaryOperator))
         {
             EnsureObjectPropertyCount(element, path, 3);
 
@@ -224,7 +224,7 @@ public static class AstJsonParser
                 $"{path}: identifier must be a string");
         }
 
-        var identifier = element.GetString()
+        string identifier = element.GetString()
             ?? throw new AstJsonException(
                 $"{path}: identifier cannot be null");
 
@@ -265,7 +265,7 @@ public static class AstJsonParser
     {
         EnsureObjectPropertyCount(element, path, 1);
 
-        foreach (var property in element.EnumerateObject())
+        foreach (JsonProperty property in element.EnumerateObject())
         {
             return property;
         }
@@ -281,7 +281,7 @@ public static class AstJsonParser
     {
         EnsureObject(element, path);
 
-        if (element.TryGetProperty(propertyName, out var property))
+        if (element.TryGetProperty(propertyName, out JsonElement property))
         {
             return property;
         }
