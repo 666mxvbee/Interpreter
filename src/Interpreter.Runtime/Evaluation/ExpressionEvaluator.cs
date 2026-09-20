@@ -42,7 +42,7 @@ internal sealed class ExpressionEvaluator
             throw new InterpreterRuntimeException("Division by zero");
         }
 
-        if (left == int.MinValue && right == 1)
+        if (left == int.MinValue && right == -1)
         {
             return int.MinValue;
         }
