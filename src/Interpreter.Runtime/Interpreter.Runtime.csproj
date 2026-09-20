@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+      <ProjectReference Include="..\Interpreter.Ast\Interpreter.Ast.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Evaluation\" />
+      <Folder Include="Exceptions\" />
+      <Folder Include="State\" />
+    </ItemGroup>
+
+    <PropertyGroup>
+        <TargetFramework>net11.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+</Project>
