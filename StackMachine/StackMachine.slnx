@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/StackMachine.Core/StackMachine.Core.csproj" />
+    <Project Path="src\StackMachine.Cli\StackMachine.Cli.csproj" Type="Classic C#" />
+  </Folder>
+</Solution>

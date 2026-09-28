@@ -1,0 +1,23 @@
+[
+  "READ",
+  { "ST": "n" },
+  { "CONST": 0 },
+  { "ST": "s" },
+  { "JMP": "L_while_cond_5" },
+  { "LABEL": "L_while_cody_4" },
+  { "LD": "s" },
+  { "LD": "n" },
+  { "BINOP": "+" },
+  { "ST": "s" },
+  { "LD": "n" },
+  { "CONST": 1 },
+  { "BINOP": "-" },
+  { "ST": "n" },
+  { "LABEL": "L_while_cond_5" },
+  { "LD": "n" },
+  { "CONST": 0 },
+  { "BINOP": ">" },
+  { "JNZ": "L_while_cody_4" },
+  { "LD": "s" },
+  "WRITE"
+]

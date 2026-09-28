@@ -1,0 +1,10 @@
+[
+  "READ", { "ST": "a" },
+  "READ", { "ST": "b" },
+  { "LD": "a" }, { "LD": "b" }, { "BINOP": "/" }, "WRITE",
+  { "LD": "a" }, { "LD": "b" }, { "BINOP": "%" }, "WRITE",
+  { "LD": "a" }, { "LD": "b" }, { "BINOP": "<" }, "WRITE",
+  { "LD": "a" }, { "LD": "b" }, { "BINOP": "&&" }, "WRITE",
+  { "LD": "a" }, { "LD": "b" }, { "BINOP": "!!" }, "WRITE",
+  { "LD": "a" }, { "LD": "b" }, { "BINOP": "==" }, "WRITE"
+]

@@ -1,0 +1,13 @@
+[
+  "READ",
+  { "ST": "a" },
+  { "LD": "a" },
+  { "JZ": "L_else_1" },
+  { "CONST": 1 },
+  "WRITE",
+  { "JMP": "L_fi_2" },
+  { "LABEL": "L_else_1" },
+  { "CONST": 2 },
+  "WRITE",
+  { "LABEL": "L_fi_2" }
+]
