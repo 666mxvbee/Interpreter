@@ -1,0 +1,35 @@
+{
+    read(x);
+
+    y = 10;
+    y += 2;
+
+    write(y);
+    write(5 / 2);
+    write(5 > 3);
+    write(1 && 0);
+    write(1 !! 0);
+
+    if (x > 10) {
+        write(100);
+    } elif (x == 10) {
+        write(200);
+    } else {
+        write(300);
+    }
+
+    i = 0;
+    while (i < 2) {
+        i += 1;
+    }
+
+    do {
+        y -= 1;
+    } while (y > 10);
+
+    for (j = 0; j < 3; j += 1) {
+        write(j);
+    }
+
+    skip;
+}
