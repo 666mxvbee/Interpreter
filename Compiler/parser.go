@@ -5,19 +5,15 @@ import (
 	"strconv"
 )
 
-// parseError — ошибка разбора. Внутри парсера она бросается через panic,
-// а Parse ловит её через recover и возвращает как обычную ошибку.
 type parseError struct{ msg string }
 
 func (e parseError) Error() string { return e.msg }
 
-// Parser — парсер рекурсивного спуска по списку токенов.
 type Parser struct {
 	toks []Token
 	pos  int
 }
 
-// Parse разбирает текст программы и возвращает её AST.
 func Parse(src string) (prog Stmt, err error) {
 	toks, err := Lex(src)
 	if err != nil {
@@ -27,7 +23,7 @@ func Parse(src string) (prog Stmt, err error) {
 		if r := recover(); r != nil {
 			pe, ok := r.(parseError)
 			if !ok {
-				panic(r) // не наша ошибка — пробрасываем дальше
+				panic(r)
 			}
 			prog, err = nil, pe
 		}
@@ -44,7 +40,6 @@ var kindNames = map[Kind]string{
 
 func (p *Parser) peek() Token { return p.toks[p.pos] }
 
-// next возвращает текущий токен и переходит к следующему (на EOF не двигается).
 func (p *Parser) next() Token {
 	t := p.toks[p.pos]
 	if t.Kind != TokEOF {
@@ -57,13 +52,11 @@ func (p *Parser) fail(t Token, format string, args ...any) {
 	panic(parseError{fmt.Sprintf("%d:%d: ", t.Line, t.Col) + fmt.Sprintf(format, args...)})
 }
 
-// is проверяет вид (и, если text != "", текст) текущего токена.
 func (p *Parser) is(kind Kind, text string) bool {
 	t := p.peek()
 	return t.Kind == kind && (text == "" || t.Text == text)
 }
 
-// accept съедает текущий токен, если он подходит.
 func (p *Parser) accept(kind Kind, text string) bool {
 	if p.is(kind, text) {
 		p.next()
@@ -72,7 +65,6 @@ func (p *Parser) accept(kind Kind, text string) bool {
 	return false
 }
 
-// expect требует токен указанного вида, иначе сообщает об ошибке.
 func (p *Parser) expect(kind Kind, text string) Token {
 	if !p.is(kind, text) {
 		want := kindNames[kind]
@@ -84,14 +76,12 @@ func (p *Parser) expect(kind Kind, text string) Token {
 	return p.next()
 }
 
-// program: "{" stmt+ "}"
 func (p *Parser) parseProgram() Stmt {
 	prog := p.parseBlock()
-	p.expect(TokEOF, "") // после программы ничего быть не должно
+	p.expect(TokEOF, "")
 	return prog
 }
 
-// "{" stmt+ "}"  ==>  seq(s1, seq(s2, s3)); блок из одного оператора — сам оператор
 func (p *Parser) parseBlock() Stmt {
 	p.expect(TokLBrace, "")
 	stmts := []Stmt{p.parseStmt()}
@@ -102,7 +92,6 @@ func (p *Parser) parseBlock() Stmt {
 	return seq(stmts)
 }
 
-// seq сворачивает список операторов в правовложенную цепочку Seq.
 func seq(stmts []Stmt) Stmt {
 	s := stmts[len(stmts)-1]
 	for i := len(stmts) - 2; i >= 0; i-- {
@@ -142,7 +131,6 @@ func (p *Parser) parseStmt() Stmt {
 	return nil
 }
 
-// "read" "(" IDENT ")" ";"?
 func (p *Parser) parseRead() Stmt {
 	p.next()
 	p.expect(TokLParen, "")
@@ -152,7 +140,6 @@ func (p *Parser) parseRead() Stmt {
 	return Read{Name: name}
 }
 
-// "write" "(" expr ")" ";"?
 func (p *Parser) parseWrite() Stmt {
 	p.next()
 	p.expect(TokLParen, "")
@@ -162,23 +149,21 @@ func (p *Parser) parseWrite() Stmt {
 	return Write{Expr: e}
 }
 
-// IDENT "=" expr ";"?  |  IDENT BINOP "=" expr ";"?
 func (p *Parser) parseAssign() Stmt {
 	name := p.next().Text
 	op := ""
 	if p.is(TokBinop, "") {
-		op = p.next().Text // составное присваивание: x op= e
+		op = p.next().Text
 	}
 	p.expect(TokAssign, "")
 	e := p.parseExpr()
 	p.accept(TokSemi, "")
 	if op != "" {
-		e = Binop{Op: op, Left: Var{Name: name}, Right: e} // x op= e  ==>  x = x op e
+		e = Binop{Op: op, Left: Var{Name: name}, Right: e}
 	}
 	return Assign{Name: name, Expr: e}
 }
 
-// "while" "(" expr ")" stmt
 func (p *Parser) parseWhile() Stmt {
 	p.next()
 	p.expect(TokLParen, "")
@@ -188,7 +173,6 @@ func (p *Parser) parseWhile() Stmt {
 	return While{Cond: cond, Body: body}
 }
 
-// "do" stmt "while" "(" expr ")" ";"?
 func (p *Parser) parseDoWhile() Stmt {
 	p.next()
 	body := p.parseStmt()
@@ -200,7 +184,6 @@ func (p *Parser) parseDoWhile() Stmt {
 	return DoWhile{Body: body, Cond: cond}
 }
 
-// "for" "(" stmt expr ";" stmt ")" stmt  ==>  seq(init, while (cond) seq(body, step))
 func (p *Parser) parseFor() Stmt {
 	p.next()
 	p.expect(TokLParen, "")
@@ -213,16 +196,13 @@ func (p *Parser) parseFor() Stmt {
 	return Seq{First: initStmt, Second: While{Cond: cond, Body: Seq{First: body, Second: step}}}
 }
 
-// "if" "(" expr ")" stmt elsePart?
-// elsePart: "else" stmt | "elif" "(" expr ")" stmt elsePart?
-// "elif" разбирается этой же функцией и становится вложенным If в ветке Else.
 func (p *Parser) parseIf() Stmt {
 	p.next() // "if" или "elif"
 	p.expect(TokLParen, "")
 	cond := p.parseExpr()
 	p.expect(TokRParen, "")
 	then := p.parseStmt()
-	var els Stmt = Skip{} // if без else — это if (c) s else skip
+	var els Stmt = Skip{}
 	if p.accept(TokKeyword, "else") {
 		els = p.parseStmt()
 	} else if p.is(TokKeyword, "elif") {
@@ -231,7 +211,6 @@ func (p *Parser) parseIf() Stmt {
 	return If{Cond: cond, Then: then, Else: els}
 }
 
-// Приоритеты операторов: чем больше число, тем сильнее оператор связывает операнды.
 var precedence = map[string]int{
 	"!!": 1,
 	"&&": 2,
@@ -240,13 +219,10 @@ var precedence = map[string]int{
 	"*": 5, "/": 5, "%": 5,
 }
 
-// expr: IDENT | CONST | expr BINOP expr | "(" expr ")"
 func (p *Parser) parseExpr() Expr {
 	return p.parseBinary(1)
 }
 
-// parseBinary разбирает цепочку операторов с приоритетом не ниже minPrec
-// (precedence climbing). Все операторы левоассоциативны.
 func (p *Parser) parseBinary(minPrec int) Expr {
 	left := p.parsePrimary()
 	for p.is(TokBinop, "") && precedence[p.peek().Text] >= minPrec {
@@ -257,7 +233,6 @@ func (p *Parser) parseBinary(minPrec int) Expr {
 	return left
 }
 
-// IDENT | CONST | "(" expr ")"
 func (p *Parser) parsePrimary() Expr {
 	t := p.next()
 	switch t.Kind {
