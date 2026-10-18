@@ -1,0 +1,35 @@
+{
+    read(a);
+    total = 0;
+    i = 0;
+    stack = 0;
+    depth = 0;
+    running = 1;
+
+    while (running) {
+        if (i < a.length) {
+            pair = a[i];
+            i += 1;
+
+            if (pair[0] == 0) {
+                total += pair[1];
+            } else {
+                stack = [a, i, stack];
+                depth += 1;
+                a = pair[1];
+                i = 0;
+            }
+        } else {
+            if (depth > 0) {
+                a = stack[0];
+                i = stack[1];
+                stack = stack[2];
+                depth -= 1;
+            } else {
+                running = 0;
+            }
+        }
+    }
+
+    write(total);
+}

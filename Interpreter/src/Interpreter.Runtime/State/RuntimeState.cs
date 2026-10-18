@@ -1,15 +1,16 @@
 ﻿using Interpreter.Runtime.Exceptions;
+using Interpreter.Runtime.Values;
 
 namespace Interpreter.Runtime.State;
 
 internal sealed class RuntimeState
 {
-    private readonly Dictionary<string, int> _variables =
+    private readonly Dictionary<string, RuntimeValue> _variables =
         new(StringComparer.Ordinal);
 
-    public int GetValue(string variableName)
+    public RuntimeValue GetValue(string variableName)
     {
-        if (_variables.TryGetValue(variableName, out int value))
+        if (_variables.TryGetValue(variableName, out RuntimeValue? value))
         {
             return value;
         }
@@ -18,7 +19,7 @@ internal sealed class RuntimeState
             $"Variable {variableName} is not defined");
     }
 
-    public void SetValue(string variableName, int value)
+    public void SetValue(string variableName, RuntimeValue value)
     {
         _variables[variableName] = value;
     }

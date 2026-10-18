@@ -41,6 +41,7 @@ public static class AstJsonParser
         {
             "seq" => ParseSequence(property.Value, propertyPath),
             "assn" => ParseAssignment(property.Value, propertyPath),
+            "set" => ParseSet(property.Value, propertyPath),
             "read" => new ReadStatement(
                 ParseIdentifier(property.Value, propertyPath)),
             "write" => new WriteStatement(
@@ -82,6 +83,16 @@ public static class AstJsonParser
             ParseExpression(
                 GetRequiredProperty(element, "src", path),
                 $"{path}.src"));
+    }
+
+    private static SetStatement ParseSet(JsonElement element, string path)
+    {
+        EnsureObjectPropertyCount(element, path, 3);
+
+        return new SetStatement(
+            ParseExpression(GetRequiredProperty(element, "dst", path), $"{path}.dst"),
+            ParseExpression(GetRequiredProperty(element, "idx", path), $"{path}.idx"),
+            ParseExpression(GetRequiredProperty(element, "value", path), $"{path}.value"));
     }
 
     private static WhileStatement ParseWhile(
@@ -138,6 +149,42 @@ public static class AstJsonParser
     {
         EnsureObject(element, path);
 
+        if (element.TryGetProperty("string", out JsonElement text))
+        {
+            EnsureObjectPropertyCount(element, path, 1);
+
+            if (text.ValueKind != JsonValueKind.String)
+            {
+                throw new AstJsonException($"{path}.string: expected a string");
+            }
+
+            return new StringExpression(text.GetString()
+                ?? throw new AstJsonException($"{path}.string: expected a string"));
+        }
+
+        if (element.TryGetProperty("array", out JsonElement array))
+        {
+            EnsureObjectPropertyCount(element, path, 1);
+
+            return ParseArray(array, $"{path}.array");
+        }
+
+        if (element.TryGetProperty("elem", out JsonElement source))
+        {
+            EnsureObjectPropertyCount(element, path, 2);
+
+            return new ElementExpression(
+                ParseExpression(source, $"{path}.elem"),
+                ParseExpression(GetRequiredProperty(element, "index", path), $"{path}.index"));
+        }
+
+        if (element.TryGetProperty("length", out JsonElement length))
+        {
+            EnsureObjectPropertyCount(element, path, 1);
+
+            return new LengthExpression(ParseExpression(length, $"{path}.length"));
+        }
+
         if (element.TryGetProperty("const", out JsonElement constant))
         {
             EnsureObjectPropertyCount(element, path, 1);
@@ -169,6 +216,23 @@ public static class AstJsonParser
         }
 
         throw new AstJsonException($"{path}: unknown expression");
+    }
+
+    private static ArrayExpression ParseArray(JsonElement element, string path)
+    {
+        if (element.ValueKind != JsonValueKind.Array || element.GetArrayLength() == 0)
+        {
+            throw new AstJsonException($"{path}: expected a non-empty array of expressions");
+        }
+
+        var elements = new List<Expression>();
+
+        foreach (JsonElement item in element.EnumerateArray())
+        {
+            elements.Add(ParseExpression(item, $"{path}[{elements.Count}]"));
+        }
+
+        return new ArrayExpression(elements);
     }
 
     private static BinaryOperator ParseBinaryOperator(

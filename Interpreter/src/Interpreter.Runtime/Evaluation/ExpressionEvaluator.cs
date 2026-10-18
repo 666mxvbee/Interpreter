@@ -1,6 +1,7 @@
 ﻿using Interpreter.Ast.Expressions;
 using Interpreter.Runtime.Exceptions;
 using Interpreter.Runtime.State;
+using Interpreter.Runtime.Values;
 
 namespace Interpreter.Runtime.Evaluation;
 
@@ -15,13 +16,18 @@ internal sealed class ExpressionEvaluator
         _state = state;
     }
 
-    public int Evaluate(Expression expression)
+    public RuntimeValue Evaluate(Expression expression)
     {
         ArgumentNullException.ThrowIfNull(expression);
 
         return expression switch
         {
-            ConstantExpression constant => constant.Value,
+            ConstantExpression constant => new IntegerValue(constant.Value),
+            StringExpression text => new StringValue(text.Value),
+            ArrayExpression array => EvaluateArray(array),
+            ElementExpression element => Evaluate(element.Source)
+                .GetElement(Evaluate(element.Index).AsInteger()),
+            LengthExpression length => new IntegerValue(Evaluate(length.Source).Length),
             VariableExpression variable => _state.GetValue(variable.Name),
             BinaryExpression binary => EvaluateBinary(binary),
 
@@ -65,34 +71,47 @@ internal sealed class ExpressionEvaluator
         return left % right;
     }
 
-    private int EvaluateBinary(BinaryExpression expression)
+    private ArrayValue EvaluateArray(ArrayExpression expression)
     {
-        int left = Evaluate(expression.Left);
-        int right = Evaluate(expression.Right);
+        var elements = new RuntimeValue[expression.Elements.Count];
 
-        return expression.Operator switch
+        for (int index = 0; index < elements.Length; index++)
+        {
+            elements[index] = Evaluate(expression.Elements[index]);
+        }
+
+        return new ArrayValue(elements);
+    }
+
+    private IntegerValue EvaluateBinary(BinaryExpression expression)
+    {
+        RuntimeValue left = Evaluate(expression.Left);
+        RuntimeValue right = Evaluate(expression.Right);
+
+        int value = expression.Operator switch
         {
             BinaryOperator.LogicalOr => ToInteger(
-                left != 0 || right != 0),
-
+                (left.AsInteger() != 0) | (right.AsInteger() != 0)),
             BinaryOperator.LogicalAnd => ToInteger(
-                left != 0 && right != 0),
+                (left.AsInteger() != 0) & (right.AsInteger() != 0)),
 
-            BinaryOperator.Equal => ToInteger(left == right),
-            BinaryOperator.NotEqual => ToInteger(left != right),
-            BinaryOperator.LessThan => ToInteger(left < right),
-            BinaryOperator.LessThanOrEqual => ToInteger(left <= right),
-            BinaryOperator.GreaterThan => ToInteger(left > right),
-            BinaryOperator.GreaterThanOrEqual => ToInteger(left >= right),
+            BinaryOperator.Equal => ToInteger(left.CompareValue(right) == 0),
+            BinaryOperator.NotEqual => ToInteger(left.CompareValue(right) != 0),
+            BinaryOperator.LessThan => ToInteger(left.CompareValue(right) < 0),
+            BinaryOperator.LessThanOrEqual => ToInteger(left.CompareValue(right) <= 0),
+            BinaryOperator.GreaterThan => ToInteger(left.CompareValue(right) > 0),
+            BinaryOperator.GreaterThanOrEqual => ToInteger(left.CompareValue(right) >= 0),
 
-            BinaryOperator.Add => unchecked(left + right),
-            BinaryOperator.Subtract => unchecked(left - right),
-            BinaryOperator.Multiply => unchecked(left * right),
-            BinaryOperator.Divide => Divide(left, right),
-            BinaryOperator.Remainder => Remainder(left, right),
+            BinaryOperator.Add => unchecked(left.AsInteger() + right.AsInteger()),
+            BinaryOperator.Subtract => unchecked(left.AsInteger() - right.AsInteger()),
+            BinaryOperator.Multiply => unchecked(left.AsInteger() * right.AsInteger()),
+            BinaryOperator.Divide => Divide(left.AsInteger(), right.AsInteger()),
+            BinaryOperator.Remainder => Remainder(left.AsInteger(), right.AsInteger()),
 
             _ => throw new InterpreterRuntimeException(
                 $"Unsupported binary operator {expression.Operator}"),
         };
+
+        return new IntegerValue(value);
     }
 }
