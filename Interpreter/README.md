@@ -104,20 +104,6 @@ wraparound on overflow.
 explicit stack of `[parent array, next index, previous frame]` arrays. It has
 no hard-coded nesting depth and uses space proportional to the current depth.
 
-## Regression tests
-
-Requires Python 3 in addition to the .NET SDK; no extra Python packages:
-
-```sh
-python3 tests/regression.py
-# After building, or with an explicitly selected SDK:
-python3 tests/regression.py --no-build --dotnet /path/to/dotnet
-```
-
-Tests exercise old examples, reference AST shapes, aliases, UTF-8 string
-mutation, input, type/bounds errors, and the sum program on generated trees
-and 1,000 nested arrays.
-
 ## Exit codes
 
 `0` — success. `1` — invalid JSON, invalid AST, a runtime error, or an I/O error. `2` — wrong
