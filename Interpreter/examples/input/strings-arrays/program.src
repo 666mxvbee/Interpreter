@@ -1,0 +1,10 @@
+{
+    s = "abc";
+    alias = s;
+    write(s.length);
+    write(s[0]);
+    s[0] = 90;
+    write(alias);
+    a = [1, [2, 3], s];
+    write(a);
+}

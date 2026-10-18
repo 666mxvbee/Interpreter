@@ -3,7 +3,7 @@ using Interpreter.Runtime.Evaluation;
 using Interpreter.Runtime.Exceptions;
 using Interpreter.Runtime.Input;
 using Interpreter.Runtime.State;
-using System.Globalization;
+using Interpreter.Runtime.Values;
 
 namespace Interpreter.Runtime;
 
@@ -11,7 +11,7 @@ public sealed class InterpreterEngine
 {
     private readonly RuntimeState _state;
     private readonly ExpressionEvaluator _expressionEvaluator;
-    private readonly IntegerInputReader _input;
+    private readonly ValueInputReader _input;
     private readonly TextWriter _output;
 
     public InterpreterEngine(TextReader input, TextWriter output)
@@ -21,7 +21,7 @@ public sealed class InterpreterEngine
 
         _state = new RuntimeState();
         _expressionEvaluator = new ExpressionEvaluator(_state);
-        _input = new IntegerInputReader(input);
+        _input = new ValueInputReader(input);
         _output = output;
     }
 
@@ -41,6 +41,10 @@ public sealed class InterpreterEngine
 
             case AssignmentStatement assignment:
                 ExecuteAssignment(assignment);
+                break;
+
+            case SetStatement set:
+                ExecuteSet(set);
                 break;
 
             case ReadStatement read:
@@ -71,28 +75,37 @@ public sealed class InterpreterEngine
 
     private void ExecuteAssignment(AssignmentStatement statement)
     {
-        int value = _expressionEvaluator.Evaluate(statement.Source);
+        RuntimeValue value = _expressionEvaluator.Evaluate(statement.Source);
 
         _state.SetValue(statement.Destination, value);
     }
 
+    private void ExecuteSet(SetStatement statement)
+    {
+        RuntimeValue destination = _expressionEvaluator.Evaluate(statement.Destination);
+        int index = _expressionEvaluator.Evaluate(statement.Index).AsInteger();
+        RuntimeValue value = _expressionEvaluator.Evaluate(statement.Value);
+
+        destination.SetElement(index, value);
+    }
+
     private void ExecuteRead(ReadStatement statement)
     {
-        int value = _input.Read();
+        RuntimeValue value = _input.Read();
 
         _state.SetValue(statement.Destination, value);
     }
 
     private void ExecuteWrite(WriteStatement statement)
     {
-        int value = _expressionEvaluator.Evaluate(statement.Value);
+        RuntimeValue value = _expressionEvaluator.Evaluate(statement.Value);
 
-        _output.WriteLine(value.ToString(CultureInfo.InvariantCulture));
+        _output.WriteLine(value.ToString());
     }
 
     private void ExecuteIf(IfStatement statement)
     {
-        int condition = _expressionEvaluator.Evaluate(statement.Condition);
+        int condition = _expressionEvaluator.Evaluate(statement.Condition).AsInteger();
 
         if (condition != 0)
         {
@@ -106,7 +119,7 @@ public sealed class InterpreterEngine
 
     private void ExecuteWhile(WhileStatement statement)
     {
-        while (_expressionEvaluator.Evaluate(statement.Condition) != 0)
+        while (_expressionEvaluator.Evaluate(statement.Condition).AsInteger() != 0)
         {
             Execute(statement.Body);
         }
@@ -118,6 +131,6 @@ public sealed class InterpreterEngine
         {
             Execute(statement.Body);
         }
-        while (_expressionEvaluator.Evaluate(statement.Condition) != 0);
+        while (_expressionEvaluator.Evaluate(statement.Condition).AsInteger() != 0);
     }
 }

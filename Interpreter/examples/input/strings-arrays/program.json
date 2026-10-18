@@ -1,0 +1,109 @@
+{
+  "seq": {
+    "left": {
+      "assn": {
+        "dst": "s",
+        "src": {
+          "string": "abc"
+        }
+      }
+    },
+    "right": {
+      "seq": {
+        "left": {
+          "assn": {
+            "dst": "alias",
+            "src": {
+              "var": "s"
+            }
+          }
+        },
+        "right": {
+          "seq": {
+            "left": {
+              "write": {
+                "length": {
+                  "var": "s"
+                }
+              }
+            },
+            "right": {
+              "seq": {
+                "left": {
+                  "write": {
+                    "elem": {
+                      "var": "s"
+                    },
+                    "index": {
+                      "const": 0
+                    }
+                  }
+                },
+                "right": {
+                  "seq": {
+                    "left": {
+                      "set": {
+                        "dst": {
+                          "var": "s"
+                        },
+                        "idx": {
+                          "const": 0
+                        },
+                        "value": {
+                          "const": 90
+                        }
+                      }
+                    },
+                    "right": {
+                      "seq": {
+                        "left": {
+                          "write": {
+                            "var": "alias"
+                          }
+                        },
+                        "right": {
+                          "seq": {
+                            "left": {
+                              "assn": {
+                                "dst": "a",
+                                "src": {
+                                  "array": [
+                                    {
+                                      "const": 1
+                                    },
+                                    {
+                                      "array": [
+                                        {
+                                          "const": 2
+                                        },
+                                        {
+                                          "const": 3
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "var": "s"
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            "right": {
+                              "write": {
+                                "var": "a"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

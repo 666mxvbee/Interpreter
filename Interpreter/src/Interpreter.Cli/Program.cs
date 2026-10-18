@@ -1,6 +1,7 @@
 ﻿using Interpreter.Ast.Serialization;
 using Interpreter.Ast.Statements;
 using Interpreter.Runtime;
+using Interpreter.Runtime.Exceptions;
 using System.Text.Json;
 
 namespace Interpreter.Cli;
@@ -55,6 +56,10 @@ public static class Program
         catch (AstJsonException exception)
         {
             return ReportError("Invalid AST", exception);
+        }
+        catch (InterpreterRuntimeException exception)
+        {
+            return ReportError("Runtime error", exception);
         }
         catch (UnauthorizedAccessException exception)
         {
