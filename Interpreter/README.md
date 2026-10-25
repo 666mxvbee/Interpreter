@@ -1,130 +1,162 @@
 # Interpreter
 
-A tree-walking interpreter for a small imperative language. It executes an
-already-parsed AST supplied as JSON; parsing source text is out of scope.
-Requires .NET SDK 11.0 or later.
+A C# interpreter for a small imperative language. It executes a JSON AST produced
+by the [reference frontend](https://dboulytchev.github.io/eval.html); it does not
+parse source text. Values, input, arithmetic, comparison, and formatting come
+from [Language.Runtime](../Shared/README.md), shared with the C# stack machine.
 
 ## Build and run
 
-```sh
-dotnet build
-dotnet run --project src/Interpreter.Cli -- <program.json> [input.txt]
-```
+All commands below run from the repository root. The C# projects target
+`net10.0`; use a .NET SDK that supports that target.
 
-`program.json` holds the AST. `input.txt` supplies values consumed by
-`read`; when it is omitted they are taken from stdin. Program output goes to
-stdout, diagnostics to stderr. Each command below prints the contents of the
-matching file in `examples/output/`.
+~~~sh
+dotnet build Interpreter.slnx
+dotnet run --project Interpreter/src/Interpreter.Cli -- <program.json> [input.txt]
+~~~
 
-```sh
-dotnet run --project src/Interpreter.Cli -- examples/input/countdown/program.json
-dotnet run --project src/Interpreter.Cli -- examples/input/features/program.json examples/input/features/input.txt
-```
+The second argument is a file path. Without it, input is read from stdin until
+EOF. The entire input is validated before execution, including unused values.
+An empty input file is valid when the program does not execute `read`.
 
-## Strings and arrays
+~~~sh
+dotnet run --project Interpreter/src/Interpreter.Cli -- Interpreter/examples/input/features/program.json Interpreter/examples/input/features/input.txt
+dotnet run --project Interpreter/src/Interpreter.Cli -- Interpreter/examples/input/constructors/program.json Interpreter/examples/input/constructors/input.txt
+~~~
 
-The JSON shapes follow the [reference interpreter](https://dboulytchev.github.io/eval.html).
-Its displayed grammar omits strings, although its parser and evaluator support them.
+The constructors example prints:
+
+~~~text
+Foo (9, "x"), 2, "x"
+~~~
+
+Each example has its executable JSON in `examples/input/<name>/program.json`
+and expected output in `examples/output/<name>.txt`. A `program.src` file,
+where present, documents the source program; the CLI still consumes JSON.
+
+## AST and execution
+
+`Interpreter.Ast` defines expressions, statements, and a strict JSON parser.
+Expressions produce values; statements change variables, mutate values, control
+execution, or perform I/O. For example:
+
+~~~json
+{"write": {"binop": "+", "left": {"const": 1}, "right": {"const": 2}}}
+~~~
 
 | Expression | JSON AST |
 | --- | --- |
-| `"abc"` | `{"string": "abc"}` |
-| `[1, 2]` | `{"array": [{"const": 1}, {"const": 2}]}` |
-| `a[i]` | `{"elem": {"var": "a"}, "index": {"var": "i"}}` |
-| `a.length` | `{"length": {"var": "a"}}` |
+| Integer | `{"const": 42}` |
+| Variable | `{"var": "a"}` |
+| String | `{"string": "abc"}` |
+| Array | `{"array": [{"const": 1}, {"const": 2}]}` |
+| Element | `{"elem": {"var": "a"}, "index": {"const": 0}}` |
+| Length | `{"length": {"var": "a"}}` |
+| Constructor | `{"sexp": "Cons", "args": [{"const": 1}, {"sexp": "Nil", "args": []}]}` |
 
-Element assignment is a statement:
+Statements include `"skip"`, `seq`, `assn`, `set`, `read`, `write`, `if`,
+`while`, and `do`. Element assignment uses:
 
-```json
+~~~json
 {
   "set": {
     "dst": {"var": "a"},
     "idx": {"const": 0},
-    "value": {"const": 42}
+    "value": {"const": 9}
   }
 }
-```
+~~~
 
-`dst` may itself be an `elem` expression for nested assignment. A compound
-assignment uses the same `set` node with a `binop` expression as its `value`,
-just as compound variable assignments use `assn` and `binop`.
+The parser checks required properties, property counts, types, identifiers, and
+integer ranges. Invalid shapes report a JSON path such as `$.write.args[1]`.
+Array literals must be non-empty, matching the source grammar; empty arrays in
+input are supported. Constructor argument lists may be empty.
 
-- Arrays have fixed length, contain values of any supported type, and may be
-  nested. Array literals are non-empty, matching the reference text grammar.
-- Indices start at zero and must be integers. Reading or writing outside the
-  bounds is a runtime error; assignment does not grow an array.
-- Strings are mutable UTF-8 byte sequences. Indexing returns a byte as an integer
-  from 0 to 255; assigning to an index requires an integer in that range.
-  Length counts bytes, so `"Я".length` is 2 and its bytes are 208 and 175.
-  Empty strings are supported. Output decodes bytes as UTF-8; invalid byte
-  sequences are replaced by the Unicode replacement character.
-- Assigning an array or string to another variable shares the value. Mutations
-  through either variable are visible through both. Evaluating a literal creates
-  a fresh value.
-- Arithmetic and logical operations require integers; `+` does not concatenate
-  strings. Comparisons support integers, strings, and arrays of the same type.
-  Strings compare lexicographically. Arrays compare lengths first, then compare
-  elements lexicographically when lengths are equal, matching the reference.
-  Nested values compare recursively; incompatible element types are a runtime error.
-- `write` prints strings without quotes and arrays as `[value; value]`.
-  Cycles encountered during recursive output/comparison are diagnosed instead of
-  overflowing the host stack.
+`Interpreter.Runtime` evaluates the parsed objects using explicit work stacks.
+Binary expressions evaluate the right operand first; element access evaluates
+the index expression before its source. Element assignment evaluates the value,
+then the index expression, then the destination, before checking the index type
+and bounds. These choices preserve the reference's error order.
 
-Input values can be signed 32-bit integers, double-quoted strings with JSON
-escapes, or non-empty arrays with comma-separated elements. Top-level values
-can be separated by whitespace (preserving existing integer input files) or
-commas. For example:
+## Values and operations
 
-```text
-42, "hello", [1, [2, 3], "abc"]
-```
+- Integers are signed 32-bit values. Addition, subtraction, and multiplication
+  wrap on overflow. Division truncates toward zero; remainder has the dividend's
+  sign. `-2147483648 / -1` yields `-2147483648`, and its remainder is zero.
+  Division or remainder by zero is a language error.
+- Zero is false; any other integer is true. `&&` and `!!` (OR) evaluate and
+  validate both operands. Logic and comparisons return zero or one.
+- Strings are mutable UTF-8 bytes. Length counts bytes: `"Я"` has length two,
+  with bytes 208 and 175. Element writes require an integer from 0 to 255.
+  Invalid UTF-8 after mutation decodes with replacement characters.
+- Arrays have fixed length and heterogeneous elements. Strings, arrays, and
+  S-expressions share references on assignment; mutations through aliases are
+  visible. Every evaluation of a literal creates a fresh value.
+- S-expressions contain a tag and mutable arguments. Length and indexing operate
+  on those arguments. `Cons(1, Nil)` is a generic constructor; lists use the
+  reserved lowercase `cons` and `nil` tags. The `:` operator constructs a list
+  cell; reference-generated JSON can represent it directly as a `cons` node.
+- Comparisons accept two integers, two strings, or two arrays. Strings compare
+  by bytes. Arrays compare lengths first, then elements when lengths match.
+  Different types and S-expressions are not comparable.
+- Unknown variables, unsuitable types, invalid indices, and exhausted input
+  produce controlled language errors.
 
-The browser reference currently drops the first and last character of strings
-entered in its Input field (for example, `"abc"` is read as `b`). This input bug
-is not reproduced: this interpreter reads the full string.
+## Input and output
 
-```sh
-dotnet run --project src/Interpreter.Cli -- examples/input/strings-arrays/program.json
-```
+Canonical input separates values with commas:
 
-## Sum of an arbitrarily nested array
+~~~text
+42, "abc", [1, []], Cons(1, Nil), {1, 2}, {}
+~~~
 
-```sh
-dotnet run --project src/Interpreter.Cli -- examples/input/nested-sum/program.json examples/input/nested-sum/input.txt
-```
+Input supports JSON string escapes, nested arrays, constructors, lists, and
+empty strings/arrays/lists. Whitespace-separated values remain accepted for
+legacy integer input files. Numeric literals outside `int32` are rejected.
 
-The example prints `21`. Each element is a pair `[0, number]` or
-`[1, nested array]`. The root and every nested array contain these pairs.
-Replace `input.txt` to sum another valid, acyclic array of this shape.
-The sum uses the interpreter's existing signed 32-bit arithmetic, including
-wraparound on overflow.
+Successful output joins `write` values with `, ` and adds one final newline.
+With no writes, stdout is empty. Strings are quoted, arrays use commas,
+constructors print as `Cons (1, Nil)`, and lists as `{1, 2}`.
+Characters inside output strings are printed literally, so output is not
+necessarily valid JSON.
 
-`program.src` documents the same algorithm; the executable input remains
-`program.json`. The program traverses the data using a `while` loop and an
-explicit stack of `[parent array, next index, previous frame]` arrays. It has
-no hard-coded nesting depth and uses space proportional to the current depth.
+Writes buffer references until the whole program succeeds. Consequently,
+mutating a string or array after a write also changes that earlier write's final
+representation. Any execution or formatting error discards all pending output.
+Diagnostics go to stderr.
 
-## Regression tests
+Exit codes: `0` success; `1` invalid file, JSON, AST, input, or execution;
+`2` invalid arguments (including `--help`).
 
-Requires Python 3 in addition to the .NET SDK; no extra Python packages:
+## Depth limits and nested sums
 
-```sh
-python3 tests/regression.py
-# After building, or with an explicitly selected SDK:
-python3 tests/regression.py --no-build --dotnet /path/to/dotnet
-```
+JSON AST nesting is limited to 512 JSON containers. Input, expression evaluation,
+output, and value comparison use explicit stacks and a nesting limit of 4096.
+Long statement sequences execute without recursive calls. Cycles encountered
+during formatting or array comparison produce controlled errors; repeated
+references to an acyclic child remain valid.
 
-Tests exercise old examples, reference AST shapes, aliases, UTF-8 string
-mutation, input, type/bounds errors, and the sum program on generated trees
-and 1,000 nested arrays.
+~~~sh
+dotnet run --project Interpreter/src/Interpreter.Cli -- Interpreter/examples/input/nested-sum/program.json Interpreter/examples/input/nested-sum/input.txt
+~~~
 
-## Exit codes
+This example prints `21`. Each data element is either `[0, number]` or
+`[1, nested array]`. A loop and explicit stack traverse the structure; tests
+include generated trees and 1000 nested levels.
 
-`0` — success. `1` — invalid JSON, invalid AST, a runtime error, or an I/O error. `2` — wrong
-number of command-line arguments.
+## Tests
 
-## Layout
+Python 3 is needed for CLI regressions; no extra Python packages are required.
 
-- `src/Interpreter.Ast` — AST nodes and the JSON parser
-- `src/Interpreter.Runtime` — evaluation engine
-- `src/Interpreter.Cli` — command-line entry point
+~~~sh
+dotnet test Shared/tests/Language.Runtime.Tests/Language.Runtime.Tests.csproj
+python Interpreter/tests/regression.py --no-build
+~~~
+
+Build first when using `--no-build`. Omit it to let the Python runner build the
+root solution. The runner obtains the executable path from MSBuild; use
+`--dll <path>` for another build output or `--dotnet <path>` for another SDK.
+
+Tests cover CLI behavior, existing examples, generated nested sums, shared
+runtime operations, and saved reference AST/SM programs. Reference fixtures are
+local; tests do not access the website or invoke the Go compiler.
