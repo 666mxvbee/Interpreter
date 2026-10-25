@@ -9,5 +9,11 @@
         <PackageReference Include="xunit" />
         <PackageReference Include="xunit.runner.visualstudio" />
         <ProjectReference Include="..\..\src\Language.Runtime\Language.Runtime.csproj" />
+        <ProjectReference Include="..\..\..\Interpreter\src\Interpreter.Runtime\Interpreter.Runtime.csproj" />
+        <ProjectReference Include="..\..\..\StackMachine\src\StackMachine.Core\StackMachine.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="Fixtures\reference.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 </Project>
