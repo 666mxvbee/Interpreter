@@ -13,25 +13,23 @@ public sealed class StringValue : RuntimeValue
         _bytes = Encoding.UTF8.GetBytes(value);
     }
 
-    public int Length => _bytes.Length;
-
     public string Text => Encoding.UTF8.GetString(_bytes);
 
     public override int GetLength()
     {
-        return Length;
+        return _bytes.Length;
     }
 
     public override RuntimeValue GetElement(int index)
     {
-        ValidateIndex(index, Length);
+        ValidateIndex(index, GetLength());
         return new IntegerValue(_bytes[index]);
     }
 
     public override void SetElement(int index, RuntimeValue value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        ValidateIndex(index, Length);
+        ValidateIndex(index, GetLength());
         int character = value.AsInteger();
 
         if (character is < byte.MinValue or > byte.MaxValue)

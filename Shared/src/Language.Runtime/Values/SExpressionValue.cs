@@ -13,8 +13,6 @@ public sealed class SExpressionValue : RuntimeValue
 
     public string Tag { get; }
 
-    public int Length => _arguments.Length;
-
     public static SExpressionValue FromList(IEnumerable<RuntimeValue> elements)
     {
         ArgumentNullException.ThrowIfNull(elements);
@@ -31,7 +29,7 @@ public sealed class SExpressionValue : RuntimeValue
 
     public override int GetLength()
     {
-        return Length;
+        return _arguments.GetLength();
     }
 
     public override RuntimeValue GetElement(int index)

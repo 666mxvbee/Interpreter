@@ -15,23 +15,21 @@ public sealed class ArrayValue : RuntimeValue
         }
     }
 
-    public int Length => _elements.Length;
-
     public override int GetLength()
     {
-        return Length;
+        return _elements.Length;
     }
 
     public override RuntimeValue GetElement(int index)
     {
-        ValidateIndex(index, Length);
+        ValidateIndex(index, GetLength());
         return _elements[index];
     }
 
     public override void SetElement(int index, RuntimeValue value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        ValidateIndex(index, Length);
+        ValidateIndex(index, GetLength());
         _elements[index] = value;
     }
 }
