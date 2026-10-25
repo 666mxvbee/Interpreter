@@ -87,7 +87,7 @@ internal sealed class ArrayValue : RuntimeValue
             throw new InterpreterRuntimeException("Cannot write a cyclic array");
         }
 
-        var elements = new string[Length];
+        string[] elements = new string[Length];
 
         for (int index = 0; index < Length; index++)
         {
