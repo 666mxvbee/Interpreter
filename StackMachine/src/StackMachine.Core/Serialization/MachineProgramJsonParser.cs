@@ -26,7 +26,7 @@ public static class MachineProgramJsonParser
         foreach (JsonElement element in root.EnumerateArray())
         {
             instructions.Add(
-                ParseInstruction(element, $"[{index}]"));
+                ParseInstruction(element, $"$[{index}]"));
 
             index++;
         }
@@ -48,6 +48,9 @@ public static class MachineProgramJsonParser
             {
                 "READ" => new ReadInstruction(),
                 "WRITE" => new WriteInstruction(),
+                "LENGTH" => new LengthInstruction(),
+                "ELEM" => new ElementInstruction(),
+                "SET" => new SetElementInstruction(),
 
                 _ => throw new MachineProgramJsonException(
                     $"{path}: unknown instruction: \"{instructionName}\""),
@@ -73,6 +76,14 @@ public static class MachineProgramJsonParser
 
             "CONST" => new ConstantInstruction(
                 ParseConstant(property.Value, propertyPath)),
+
+            "STRING" => new StringInstruction(
+                ParseStringArgument(property.Value, propertyPath)),
+
+            "ARRAY" => new ArrayInstruction(
+                ParseCount(property.Value, propertyPath)),
+
+            "SEXP" => ParseSExpression(property.Value, propertyPath),
 
             "BINOP" => new BinaryOperationInstruction(
                 ParseBinaryOperator(property.Value, propertyPath)),
@@ -108,6 +119,36 @@ public static class MachineProgramJsonParser
             $"{path}: constant must be a 32-bit integer");
     }
 
+    private static int ParseCount(JsonElement element, string path)
+    {
+        int count = ParseConstant(element, path);
+
+        if (count < 0)
+        {
+            throw new MachineProgramJsonException($"{path}: expected a non-negative count");
+        }
+
+        return count;
+    }
+
+    private static SExpressionInstruction ParseSExpression(JsonElement element, string path)
+    {
+        if (element.ValueKind != JsonValueKind.Array || element.GetArrayLength() != 2)
+        {
+            throw new MachineProgramJsonException($"{path}: expected [tag, argumentCount]");
+        }
+
+        string tag = ParseStringArgument(element[0], $"{path}[0]");
+
+        if (tag.Length == 0 || !char.IsAsciiLetter(tag[0])
+            || tag.Skip(1).Any(character => !char.IsAsciiLetterOrDigit(character) && character is not '_' and not '\''))
+        {
+            throw new MachineProgramJsonException($"{path}[0]: invalid constructor tag \"{tag}\"");
+        }
+
+        return new SExpressionInstruction(tag, ParseCount(element[1], $"{path}[1]"));
+    }
+
     private static BinaryOperator ParseBinaryOperator(
         JsonElement element,
         string path)
@@ -131,6 +172,7 @@ public static class MachineProgramJsonParser
             "*" => BinaryOperator.Multiply,
             "/" => BinaryOperator.Divide,
             "%" => BinaryOperator.Remainder,
+            ":" => BinaryOperator.Cons,
 
             _ => throw new MachineProgramJsonException(
                 $"{path}: unknown binary operator \"{value}\""),
@@ -179,7 +221,7 @@ public static class MachineProgramJsonParser
         if (actualCount != expectedCount)
         {
             throw new MachineProgramJsonException(
-                $"{path}: expected {expectedCount}, properties "
+                $"{path}: expected {expectedCount} properties, "
                 + $"got {actualCount}");
         }
     }
