@@ -1,9 +1,10 @@
-﻿using Interpreter.Ast.Statements;
+using Interpreter.Ast.Statements;
 using Interpreter.Runtime.Evaluation;
 using Interpreter.Runtime.Exceptions;
-using Interpreter.Runtime.Input;
 using Interpreter.Runtime.State;
-using Interpreter.Runtime.Values;
+using Language.Runtime.Formatting;
+using Language.Runtime.Input;
+using Language.Runtime.Values;
 
 namespace Interpreter.Runtime;
 
@@ -18,7 +19,6 @@ public sealed class InterpreterEngine
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
-
         _state = new RuntimeState();
         _expressionEvaluator = new ExpressionEvaluator(_state);
         _input = new ValueInputReader(input);
@@ -28,109 +28,66 @@ public sealed class InterpreterEngine
     public void Execute(Statement statement)
     {
         ArgumentNullException.ThrowIfNull(statement);
+        var pending = new Stack<Statement>();
+        var output = new List<RuntimeValue>();
+        pending.Push(statement);
 
-        switch (statement)
+        while (pending.TryPop(out Statement? current))
         {
-            case SkipStatement:
-                break;
+            switch (current)
+            {
+                case SkipStatement:
+                    break;
+                case SequenceStatement sequence:
+                    pending.Push(sequence.Right);
+                    pending.Push(sequence.Left);
+                    break;
+                case AssignmentStatement assignment:
+                    _state.SetValue(assignment.Destination, _expressionEvaluator.Evaluate(assignment.Source));
+                    break;
+                case SetStatement set:
+                    ExecuteSet(set);
+                    break;
+                case ReadStatement read:
+                    _state.SetValue(read.Destination, _input.Read());
+                    break;
+                case WriteStatement write:
+                    output.Add(_expressionEvaluator.Evaluate(write.Value));
+                    break;
+                case IfStatement conditional:
+                    pending.Push(_expressionEvaluator.Evaluate(conditional.Condition).AsInteger() != 0
+                        ? conditional.ThenBranch
+                        : conditional.ElseBranch);
+                    break;
+                case WhileStatement loop:
+                    if (_expressionEvaluator.Evaluate(loop.Condition).AsInteger() != 0)
+                    {
+                        pending.Push(loop);
+                        pending.Push(loop.Body);
+                    }
 
-            case SequenceStatement sequence:
-                Execute(sequence.Left);
-                Execute(sequence.Right);
-                break;
-
-            case AssignmentStatement assignment:
-                ExecuteAssignment(assignment);
-                break;
-
-            case SetStatement set:
-                ExecuteSet(set);
-                break;
-
-            case ReadStatement read:
-                ExecuteRead(read);
-                break;
-
-            case WriteStatement write:
-                ExecuteWrite(write);
-                break;
-
-            case IfStatement conditional:
-                ExecuteIf(conditional);
-                break;
-
-            case WhileStatement whileStatement:
-                ExecuteWhile(whileStatement);
-                break;
-
-            case DoWhileStatement doWhileStatement:
-                ExecuteDoWhile(doWhileStatement);
-                break;
-
-            default:
-                throw new InterpreterRuntimeException(
-                    $"Unsupported statement type {statement.GetType().Name}");
+                    break;
+                case DoWhileStatement loop:
+                    pending.Push(new WhileStatement(loop.Condition, loop.Body));
+                    pending.Push(loop.Body);
+                    break;
+                default:
+                    throw new InterpreterRuntimeException($"Unsupported statement type {current.GetType().Name}");
+            }
         }
-    }
 
-    private void ExecuteAssignment(AssignmentStatement statement)
-    {
-        RuntimeValue value = _expressionEvaluator.Evaluate(statement.Source);
-
-        _state.SetValue(statement.Destination, value);
+        if (output.Count > 0)
+        {
+            string formatted = RuntimeValueFormatter.FormatOutput(output);
+            _output.WriteLine(formatted);
+        }
     }
 
     private void ExecuteSet(SetStatement statement)
     {
+        RuntimeValue value = _expressionEvaluator.Evaluate(statement.Value);
+        RuntimeValue index = _expressionEvaluator.Evaluate(statement.Index);
         RuntimeValue destination = _expressionEvaluator.Evaluate(statement.Destination);
-        int index = _expressionEvaluator.Evaluate(statement.Index).AsInteger();
-        RuntimeValue value = _expressionEvaluator.Evaluate(statement.Value);
-
-        destination.SetElement(index, value);
-    }
-
-    private void ExecuteRead(ReadStatement statement)
-    {
-        RuntimeValue value = _input.Read();
-
-        _state.SetValue(statement.Destination, value);
-    }
-
-    private void ExecuteWrite(WriteStatement statement)
-    {
-        RuntimeValue value = _expressionEvaluator.Evaluate(statement.Value);
-
-        _output.WriteLine(value.ToString());
-    }
-
-    private void ExecuteIf(IfStatement statement)
-    {
-        int condition = _expressionEvaluator.Evaluate(statement.Condition).AsInteger();
-
-        if (condition != 0)
-        {
-            Execute(statement.ThenBranch);
-        }
-        else
-        {
-            Execute(statement.ElseBranch);
-        }
-    }
-
-    private void ExecuteWhile(WhileStatement statement)
-    {
-        while (_expressionEvaluator.Evaluate(statement.Condition).AsInteger() != 0)
-        {
-            Execute(statement.Body);
-        }
-    }
-
-    private void ExecuteDoWhile(DoWhileStatement statement)
-    {
-        do
-        {
-            Execute(statement.Body);
-        }
-        while (_expressionEvaluator.Evaluate(statement.Condition).AsInteger() != 0);
+        destination.SetElement(index.AsInteger(), value);
     }
 }

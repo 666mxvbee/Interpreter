@@ -1,6 +1,8 @@
-﻿namespace Interpreter.Runtime.Exceptions;
+using Language.Runtime.Exceptions;
 
-public sealed class InterpreterRuntimeException : Exception
+namespace Interpreter.Runtime.Exceptions;
+
+public sealed class InterpreterRuntimeException : LanguageRuntimeException
 {
     public InterpreterRuntimeException(string message)
         : base(message)

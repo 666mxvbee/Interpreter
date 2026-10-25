@@ -1,7 +1,7 @@
-﻿using Interpreter.Ast.Serialization;
+using Interpreter.Ast.Serialization;
 using Interpreter.Ast.Statements;
 using Interpreter.Runtime;
-using Interpreter.Runtime.Exceptions;
+using Language.Runtime.Exceptions;
 using System.Text.Json;
 
 namespace Interpreter.Cli;
@@ -57,7 +57,7 @@ public static class Program
         {
             return ReportError("Invalid AST", exception);
         }
-        catch (InterpreterRuntimeException exception)
+        catch (LanguageRuntimeException exception)
         {
             return ReportError("Runtime error", exception);
         }
