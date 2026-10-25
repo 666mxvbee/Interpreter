@@ -1,0 +1,19 @@
+[
+  { "CONST": 1 },
+  { "STRING": "x" },
+  { "SEXP": [ "Foo", 2 ] },
+  { "ST": "a" },
+  { "LD": "a" },
+  { "CONST": 0 },
+  { "CONST": 9 },
+  "SET",
+  { "LD": "a" },
+  "WRITE",
+  { "LD": "a" },
+  "LENGTH",
+  "WRITE",
+  { "LD": "a" },
+  { "CONST": 1 },
+  "ELEM",
+  "WRITE"
+]
