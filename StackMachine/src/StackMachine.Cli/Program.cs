@@ -1,8 +1,10 @@
-﻿using StackMachine.Core.Execution;
+using Language.Runtime.Exceptions;
+using Language.Runtime.Formatting;
+using Language.Runtime.Values;
+using StackMachine.Core.Execution;
 using StackMachine.Core.Input;
 using StackMachine.Core.Instructions;
 using StackMachine.Core.Serialization;
-using System.Globalization;
 using System.Text.Json;
 
 namespace StackMachine.Cli;
@@ -15,121 +17,69 @@ public static class Program
 
     public static int Main(string[] args)
     {
-        if (args.Length is < 1 or > 2)
+        if (args.Length is < 1 or > 2 || args[0] is "-h" or "--help")
         {
             WriteUsage();
-
             return InvalidArgumentsExitCode;
         }
 
-        if (args[0] is "-h" or "--help")
-        {
-            WriteUsage();
-
-            return InvalidArgumentsExitCode;
-        }
-
-        string programPath = args[0];
-        string? inputPath = args.Length == 2
-            ? args[1]
-            : null;
-
-        return Run(programPath, inputPath);
-    }
-
-    private static int Run(
-        string programPath,
-        string? inputPath)
-    {
         try
         {
-            string json = File.ReadAllText(programPath);
-
-            string inputText = inputPath is null
-                ? Console.In.ReadToEnd()
-                : File.ReadAllText(inputPath);
-
-            IReadOnlyList<Instruction> program =
-                MachineProgramJsonParser.Parse(json);
-
-            IReadOnlyList<int> input =
-                MachineInputParser.Parse(inputText);
-
+            string json = File.ReadAllText(args[0]);
+            IReadOnlyList<Instruction> program = MachineProgramJsonParser.Parse(json);
+            string inputText = args.Length == 2 ? File.ReadAllText(args[1]) : Console.In.ReadToEnd();
+            IReadOnlyList<RuntimeValue> input = MachineInputParser.Parse(inputText);
             var engine = new StackMachineEngine();
+            IReadOnlyList<RuntimeValue> output = engine.Execute(program, input);
 
-            IReadOnlyList<int> output =
-                engine.Execute(program, input);
-
-            WriteOutput(output);
+            if (output.Count > 0)
+            {
+                string formatted = RuntimeValueFormatter.FormatOutput(output);
+                Console.WriteLine(formatted);
+            }
 
             return SuccessExitCode;
         }
         catch (JsonException exception)
         {
-            return ReportError(
-                "Invalid JSON",
-                exception);
+            return ReportError("Invalid JSON", exception);
         }
         catch (MachineProgramJsonException exception)
         {
-            return ReportError(
-                "Invalid program",
-                exception);
+            return ReportError("Invalid program", exception);
         }
         catch (MachineInputException exception)
         {
-            return ReportError(
-                "Invalid input",
-                exception);
+            return ReportError("Invalid input", exception);
         }
-        catch (MachineExecutionException exception)
+        catch (LanguageRuntimeException exception)
         {
-            return ReportError(
-                "Execution error",
-                exception);
+            return ReportError("Execution error", exception);
         }
         catch (UnauthorizedAccessException exception)
         {
-            return ReportError(
-                "I/O error",
-                exception);
+            return ReportError("I/O error", exception);
         }
         catch (IOException exception)
         {
-            return ReportError(
-                "I/O error",
-                exception);
+            return ReportError("I/O error", exception);
+        }
+        catch (ArgumentException exception)
+        {
+            return ReportError("Invalid argument", exception);
         }
     }
 
-    private static void WriteOutput(
-        IReadOnlyList<int> output)
+    private static int ReportError(string category, Exception exception)
     {
-        IEnumerable<string> formattedValues =
-            output.Select(value =>
-                value.ToString(
-                    CultureInfo.InvariantCulture));
-
-        Console.WriteLine(
-            string.Join("; ", formattedValues));
-    }
-
-    private static int ReportError(
-        string category,
-        Exception e)
-    {
-        Console.Error.WriteLine(
-            $"{category}: {e.Message}");
-
+        Console.Error.WriteLine($"{category}: {exception.Message}");
         return ExecutionFailureExitCode;
     }
 
     private static void WriteUsage()
     {
-        Console.Error.WriteLine("Usage: StackMachine.Cli <program.json> [input]");
-
-        Console.Error.WriteLine("input: comma-separated integers,for example \"-52, 67\"");
-
-        Console.Error.WriteLine("if input.txt is omitted, input is read from stdin");
+        Console.Error.WriteLine("Usage: StackMachine.Cli <program.json> [input.txt]");
+        Console.Error.WriteLine("  input.txt: comma-separated values, e.g. 42, \"abc\", [1, 2]");
+        Console.Error.WriteLine("  if input.txt is omitted, input is read from stdin");
     }
 }

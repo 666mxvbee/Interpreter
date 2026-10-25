@@ -1,0 +1,7 @@
+{
+  a = Foo(1, "x");
+  a[0] = 9;
+  write(a);
+  write(a.length);
+  write(a[1]);
+}

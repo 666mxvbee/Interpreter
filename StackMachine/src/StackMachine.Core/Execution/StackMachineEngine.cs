@@ -1,198 +1,125 @@
-﻿using StackMachine.Core.Instructions;
+using Language.Runtime.Exceptions;
+using Language.Runtime.Values;
+using StackMachine.Core.Instructions;
 
 namespace StackMachine.Core.Execution;
 
 public sealed class StackMachineEngine
 {
-    public IReadOnlyList<int> Execute(
-        IReadOnlyList<Instruction> program,
-        IEnumerable<int> input)
+    public IReadOnlyList<RuntimeValue> Execute(IReadOnlyList<Instruction> program, IEnumerable<RuntimeValue> input)
     {
         ArgumentNullException.ThrowIfNull(program);
         ArgumentNullException.ThrowIfNull(input);
-
-        var labelTable = LabelTable.Create(program);
+        var labels = LabelTable.Create(program);
         var state = new MachineState(input);
 
         while (state.ProgramCounter < program.Count)
         {
-            Instruction instruction =
-                program[state.ProgramCounter];
-
-            ExecuteInstruction(
-                instruction,
-                state,
-                labelTable);
+            try
+            {
+                ExecuteInstruction(program[state.ProgramCounter], state, labels);
+            }
+            catch (LanguageRuntimeException exception)
+            {
+                throw new MachineExecutionException(
+                    $"{exception.Message} at instruction {state.ProgramCounter}", exception);
+            }
         }
 
         return state.CreateOutputSnapshot();
     }
 
-    private static void ExecuteInstruction(
-        Instruction instruction,
-        MachineState state,
-        LabelTable labelTable)
+    private static void ExecuteInstruction(Instruction instruction, MachineState state, LabelTable labels)
     {
         switch (instruction)
         {
             case ReadInstruction:
-                ExecuteRead(state);
-                break;
+                if (!state.TryRead(out RuntimeValue? input) || input is null)
+                {
+                    throw new LanguageRuntimeException("READ requires an input value");
+                }
 
+                state.Push(input);
+                break;
             case WriteInstruction:
-                ExecuteWrite(state);
+                state.Write(Pop(state));
                 break;
-
-            case LoadInstruction loadInstruction:
-                ExecuteLoad(loadInstruction, state);
+            case ConstantInstruction constant:
+                state.Push(new IntegerValue(constant.Value));
                 break;
-
-            case StoreInstruction storeInstruction:
-                ExecuteStore(storeInstruction, state);
+            case StringInstruction text:
+                state.Push(new StringValue(text.Value));
                 break;
-
-            case ConstantInstruction constantInstruction:
-                state.Push(constantInstruction.Value);
-                state.MoveNext();
+            case ArrayInstruction array:
+                state.Push(new ArrayValue(PopElements(array.Count, state)));
                 break;
+            case SExpressionInstruction constructor:
+                if (string.IsNullOrWhiteSpace(constructor.Tag))
+                {
+                    throw new LanguageRuntimeException("Constructor tag cannot be empty");
+                }
 
-            case BinaryOperationInstruction binaryOperation:
-                ExecuteBinaryOperation(binaryOperation, state);
+                state.Push(new SExpressionValue(constructor.Tag, PopElements(constructor.ArgumentCount, state)));
                 break;
+            case LengthInstruction:
+                state.Push(new IntegerValue(Pop(state).GetLength()));
+                break;
+            case ElementInstruction:
+                RequireStack(state, 2);
+                int index = Pop(state).AsInteger();
+                state.Push(Pop(state).GetElement(index));
+                break;
+            case SetElementInstruction:
+                RequireStack(state, 3);
+                RuntimeValue value = Pop(state);
+                RuntimeValue position = Pop(state);
+                RuntimeValue destination = Pop(state);
+                destination.SetElement(position.AsInteger(), value);
+                break;
+            case LoadInstruction load:
+                if (!state.TryLoad(load.VariableName, out RuntimeValue? loaded) || loaded is null)
+                {
+                    throw new LanguageRuntimeException($"Undefined variable \"{load.VariableName}\"");
+                }
 
+                state.Push(loaded);
+                break;
+            case StoreInstruction store:
+                state.Store(store.VariableName, Pop(state));
+                break;
+            case BinaryOperationInstruction binary:
+                RequireStack(state, 2);
+                RuntimeValue right = Pop(state);
+                RuntimeValue left = Pop(state);
+                state.Push(BinaryOperatorEvaluator.Evaluate(binary.Operator, left, right));
+                break;
             case LabelInstruction:
-                state.MoveNext();
                 break;
-
-            case JumpInstruction jumpInstruction:
-                ExecuteJump(
-                    jumpInstruction.Target,
-                    state,
-                    labelTable);
-                break;
-
-            case JumpIfZeroInstruction jumpInstruction:
-                ExecuteConditionalJump(
-                    jumpInstruction.Target,
-                    jumpWhenZero: true,
-                    state,
-                    labelTable);
-                break;
-
-            case JumpIfNotZeroInstruction jumpInstruction:
-                ExecuteConditionalJump(
-                    jumpInstruction.Target,
-                    jumpWhenZero: false,
-                    state,
-                    labelTable);
-                break;
-
+            case JumpInstruction jump:
+                state.JumpTo(Resolve(jump.Target, labels));
+                return;
+            case JumpIfZeroInstruction jump:
+                ExecuteConditionalJump(jump.Target, true, state, labels);
+                return;
+            case JumpIfNotZeroInstruction jump:
+                ExecuteConditionalJump(jump.Target, false, state, labels);
+                return;
+            case null:
+                throw new LanguageRuntimeException("Instruction cannot be null");
             default:
-                throw CreateError(
-                    state,
-                    $"Unsupported instruction type \"{instruction.GetType().Name}\"");
-        }
-    }
-
-    private static void ExecuteRead(MachineState state)
-    {
-        if (!state.TryRead(out int value))
-        {
-            throw CreateError(
-                state,
-                "READ requires an input value");
+                throw new LanguageRuntimeException($"Unsupported instruction type {instruction.GetType().Name}");
         }
 
-        state.Push(value);
         state.MoveNext();
     }
 
-    private static void ExecuteWrite(MachineState state)
+    private static void ExecuteConditionalJump(string target, bool jumpWhenZero, MachineState state, LabelTable labels)
     {
-        int value = Pop(state);
+        bool isZero = Pop(state).AsInteger() == 0;
 
-        state.Write(value);
-        state.MoveNext();
-    }
-
-    private static void ExecuteLoad(
-        LoadInstruction instruction,
-        MachineState state)
-    {
-        if (!state.TryLoad(
-                instruction.VariableName,
-                out int value))
+        if (isZero == jumpWhenZero)
         {
-            throw CreateError(
-                state,
-                $"Undefined variable \"{instruction.VariableName}\"");
-        }
-
-        state.Push(value);
-        state.MoveNext();
-    }
-
-    private static void ExecuteStore(
-        StoreInstruction instruction,
-        MachineState state)
-    {
-        int value = Pop(state);
-
-        state.Store(instruction.VariableName, value);
-        state.MoveNext();
-    }
-
-    private static void ExecuteBinaryOperation(
-        BinaryOperationInstruction instruction,
-        MachineState state)
-    {
-        int right = Pop(state);
-        int left = Pop(state);
-
-        try
-        {
-            int result = BinaryOperatorEvaluator.Evaluate(
-                instruction.Operator,
-                left,
-                right);
-
-            state.Push(result);
-            state.MoveNext();
-        }
-        catch (MachineExecutionException exception)
-        {
-            throw CreateError(state, exception.Message);
-        }
-    }
-
-    private static void ExecuteJump(
-        string target,
-        MachineState state,
-        LabelTable labelTable)
-    {
-        int instructionIndex = Resolve(
-            target,
-            state,
-            labelTable);
-
-        state.JumpTo(instructionIndex);
-    }
-
-    private static void ExecuteConditionalJump(
-        string target,
-        bool jumpWhenZero,
-        MachineState state,
-        LabelTable labelTable)
-    {
-        int condition = Pop(state);
-
-        bool shouldJump = jumpWhenZero
-            ? condition == 0
-            : condition != 0;
-
-        if (shouldJump)
-        {
-            ExecuteJump(target, state, labelTable);
+            state.JumpTo(Resolve(target, labels));
         }
         else
         {
@@ -200,41 +127,49 @@ public sealed class StackMachineEngine
         }
     }
 
-    private static int Pop(MachineState state)
+    private static RuntimeValue Pop(MachineState state)
     {
-        if (!state.TryPop(out int value))
+        if (!state.TryPop(out RuntimeValue? value) || value is null)
         {
-            throw CreateError(
-                state,
-                "Exhausted stack");
+            throw new LanguageRuntimeException("Exhausted stack");
         }
 
         return value;
     }
 
-    private static int Resolve(
-        string target,
-        MachineState state,
-        LabelTable labelTable)
+    private static RuntimeValue[] PopElements(int count, MachineState state)
     {
-        if (!labelTable.TryResolve(
-                target,
-                out int instructionIndex))
+        if (count < 0)
         {
-            throw CreateError(
-                state,
-                $"Undefined label \"{target}\"");
+            throw new LanguageRuntimeException("Element count cannot be negative");
         }
 
-        return instructionIndex;
+        RequireStack(state, count);
+        var values = new RuntimeValue[count];
+
+        for (int index = count - 1; index >= 0; index--)
+        {
+            values[index] = Pop(state);
+        }
+
+        return values;
     }
 
-    private static MachineExecutionException CreateError(
-        MachineState state,
-        string message)
+    private static void RequireStack(MachineState state, int count)
     {
-        return new MachineExecutionException(
-            $"{message} at instruction "
-            + $"{state.ProgramCounter}");
+        if (state.StackCount < count)
+        {
+            throw new LanguageRuntimeException("Exhausted stack");
+        }
+    }
+
+    private static int Resolve(string target, LabelTable labels)
+    {
+        if (!labels.TryResolve(target, out int index))
+        {
+            throw new LanguageRuntimeException($"Undefined label \"{target}\"");
+        }
+
+        return index;
     }
 }

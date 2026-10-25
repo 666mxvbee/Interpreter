@@ -1,0 +1,40 @@
+{
+  "seq": {
+    "left": {
+      "assn": {
+        "dst": "a",
+        "src": {
+          "sexp": "Foo",
+          "args": [ { "const": 1 }, { "string": "x" } ]
+        }
+      }
+    },
+    "right": {
+      "seq": {
+        "left": {
+          "set": {
+            "dst": { "var": "a" },
+            "idx": { "const": 0 },
+            "value": { "const": 9 }
+          }
+        },
+        "right": {
+          "seq": {
+            "left": { "write": { "var": "a" } },
+            "right": {
+              "seq": {
+                "left": { "write": { "length": { "var": "a" } } },
+                "right": {
+                  "write": {
+                    "elem": { "var": "a" },
+                    "index": { "const": 1 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

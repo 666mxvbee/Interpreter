@@ -1,0 +1,20 @@
+﻿<Solution>
+    <Folder Name="/Interpreter/">
+        <Project Path="Interpreter/src/Interpreter.Ast/Interpreter.Ast.csproj" />
+        <Project Path="Interpreter/src/Interpreter.Runtime/Interpreter.Runtime.csproj" />
+        <Project Path="Interpreter/src/Interpreter.Cli/Interpreter.Cli.csproj" />
+    </Folder>
+
+    <Folder Name="/StackMachine/">
+        <Project Path="StackMachine/src/StackMachine.Core/StackMachine.Core.csproj" />
+        <Project Path="StackMachine/src/StackMachine.Cli/StackMachine.Cli.csproj" />
+    </Folder>
+
+    <Folder Name="/Shared/">
+        <Project Path="Shared/src/Language.Runtime/Language.Runtime.csproj" />
+    </Folder>
+
+    <Folder Name="/Tests/">
+        <Project Path="Shared/tests/Language.Runtime.Tests/Language.Runtime.Tests.csproj" />
+    </Folder>
+</Solution>

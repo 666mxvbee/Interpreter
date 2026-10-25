@@ -1,0 +1,580 @@
+{
+  "reference": {
+    "eval": "https://dboulytchev.github.io/eval.html",
+    "machine": "https://dboulytchev.github.io/sm.html",
+    "captured": "2026-10-25",
+    "scriptSha256": "12D0C9E154080CF17C544D26CE907DD2EE74A8F753C9708935ABE1BB1A1A8653"
+  },
+  "cases": [
+    {
+      "name": "integer_arithmetic",
+      "source": "{ write(2147483647 + 1); write((0 - 7) / 2); write((0 - 7) % 2); write(1073741824 * 4); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"write\": {\n        \"binop\": \"+\",\n        \"left\": { \"const\": 2147483647 },\n        \"right\": { \"const\": 1 }\n      }\n    },\n    \"right\": {\n      \"seq\": {\n        \"left\": {\n          \"write\": {\n            \"binop\": \"/\",\n            \"left\": {\n              \"binop\": \"-\",\n              \"left\": { \"const\": 0 },\n              \"right\": { \"const\": 7 }\n            },\n            \"right\": { \"const\": 2 }\n          }\n        },\n        \"right\": {\n          \"seq\": {\n            \"left\": {\n              \"write\": {\n                \"binop\": \"%\",\n                \"left\": {\n                  \"binop\": \"-\",\n                  \"left\": { \"const\": 0 },\n                  \"right\": { \"const\": 7 }\n                },\n                \"right\": { \"const\": 2 }\n              }\n            },\n            \"right\": {\n              \"write\": {\n                \"binop\": \"*\",\n                \"left\": { \"const\": 1073741824 },\n                \"right\": { \"const\": 4 }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "-2147483648, -3, -1, 0",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 2147483647 },\n  { \"CONST\": 1 },\n  { \"BINOP\": \"+\" },\n  \"WRITE\",\n  { \"CONST\": 0 },\n  { \"CONST\": 7 },\n  { \"BINOP\": \"-\" },\n  { \"CONST\": 2 },\n  { \"BINOP\": \"/\" },\n  \"WRITE\",\n  { \"CONST\": 0 },\n  { \"CONST\": 7 },\n  { \"BINOP\": \"-\" },\n  { \"CONST\": 2 },\n  { \"BINOP\": \"%\" },\n  \"WRITE\",\n  { \"CONST\": 1073741824 },\n  { \"CONST\": 4 },\n  { \"BINOP\": \"*\" },\n  \"WRITE\"\n]",
+        "output": "-2147483648, -3, -1, 0",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "logical_values",
+      "source": "{ write(0 && 3); write(2 && 3); write(0 !! 3); write(1 == 1); write(2 > 3); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"write\": {\n        \"binop\": \"&&\",\n        \"left\": { \"const\": 0 },\n        \"right\": { \"const\": 3 }\n      }\n    },\n    \"right\": {\n      \"seq\": {\n        \"left\": {\n          \"write\": {\n            \"binop\": \"&&\",\n            \"left\": { \"const\": 2 },\n            \"right\": { \"const\": 3 }\n          }\n        },\n        \"right\": {\n          \"seq\": {\n            \"left\": {\n              \"write\": {\n                \"binop\": \"!!\",\n                \"left\": { \"const\": 0 },\n                \"right\": { \"const\": 3 }\n              }\n            },\n            \"right\": {\n              \"seq\": {\n                \"left\": {\n                  \"write\": {\n                    \"binop\": \"==\",\n                    \"left\": { \"const\": 1 },\n                    \"right\": { \"const\": 1 }\n                  }\n                },\n                \"right\": {\n                  \"write\": {\n                    \"binop\": \">\",\n                    \"left\": { \"const\": 2 },\n                    \"right\": { \"const\": 3 }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "0, 1, 1, 1, 0",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 0 },\n  { \"CONST\": 3 },\n  { \"BINOP\": \"&&\" },\n  \"WRITE\",\n  { \"CONST\": 2 },\n  { \"CONST\": 3 },\n  { \"BINOP\": \"&&\" },\n  \"WRITE\",\n  { \"CONST\": 0 },\n  { \"CONST\": 3 },\n  { \"BINOP\": \"!!\" },\n  \"WRITE\",\n  { \"CONST\": 1 },\n  { \"CONST\": 1 },\n  { \"BINOP\": \"==\" },\n  \"WRITE\",\n  { \"CONST\": 2 },\n  { \"CONST\": 3 },\n  { \"BINOP\": \">\" },\n  \"WRITE\"\n]",
+        "output": "0, 1, 1, 1, 0",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "array_set",
+      "source": "{ a = [1, 2]; a[0] = 9; write(a); write(a.length); write(a[0]); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"assn\": {\n        \"dst\": \"a\",\n        \"src\": { \"array\": [ { \"const\": 1 }, { \"const\": 2 } ] }\n      }\n    },\n    \"right\": {\n      \"seq\": {\n        \"left\": {\n          \"set\": {\n            \"dst\": { \"var\": \"a\" },\n            \"idx\": { \"const\": 0 },\n            \"value\": { \"const\": 9 }\n          }\n        },\n        \"right\": {\n          \"seq\": {\n            \"left\": { \"write\": { \"var\": \"a\" } },\n            \"right\": {\n              \"seq\": {\n                \"left\": { \"write\": { \"length\": { \"var\": \"a\" } } },\n                \"right\": {\n                  \"write\": {\n                    \"elem\": { \"var\": \"a\" },\n                    \"index\": { \"const\": 0 }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "[9, 2], 2, 9",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"CONST\": 2 },\n  { \"ARRAY\": 2 },\n  { \"ST\": \"a\" },\n  { \"LD\": \"a\" },\n  { \"CONST\": 0 },\n  { \"CONST\": 9 },\n  \"SET\",\n  { \"LD\": \"a\" },\n  \"WRITE\",\n  { \"LD\": \"a\" },\n  \"LENGTH\",\n  \"WRITE\",\n  { \"LD\": \"a\" },\n  { \"CONST\": 0 },\n  \"ELEM\",\n  \"WRITE\"\n]",
+        "output": "[9, 2], 2, 9",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "empty_array_input",
+      "source": "{ read(a); write(a); write(a.length); }",
+      "input": "[]",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": { \"read\": \"a\" },\n    \"right\": {\n      \"seq\": {\n        \"left\": { \"write\": { \"var\": \"a\" } },\n        \"right\": { \"write\": { \"length\": { \"var\": \"a\" } } }\n      }\n    }\n  }\n}",
+        "output": "[], 0",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  \"READ\",\n  { \"ST\": \"a\" },\n  { \"LD\": \"a\" },\n  \"WRITE\",\n  { \"LD\": \"a\" },\n  \"LENGTH\",\n  \"WRITE\"\n]",
+        "output": "[], 0",
+        "error": ""
+      }
+    },
+    {
+      "name": "empty_list_input",
+      "source": "{ read(a); write(a); write(a.length); }",
+      "input": "{}",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": { \"read\": \"a\" },\n    \"right\": {\n      \"seq\": {\n        \"left\": { \"write\": { \"var\": \"a\" } },\n        \"right\": { \"write\": { \"length\": { \"var\": \"a\" } } }\n      }\n    }\n  }\n}",
+        "output": "{}, 0",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  \"READ\",\n  { \"ST\": \"a\" },\n  { \"LD\": \"a\" },\n  \"WRITE\",\n  { \"LD\": \"a\" },\n  \"LENGTH\",\n  \"WRITE\"\n]",
+        "output": "{}, 0",
+        "error": ""
+      }
+    },
+    {
+      "name": "empty_string",
+      "source": "{ write(\"\"); write(\"\".length); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": { \"write\": { \"string\": \"\" } },\n    \"right\": { \"write\": { \"length\": { \"string\": \"\" } } }\n  }\n}",
+        "output": "\"\", 0",
+        "error": ""
+      },
+      "sm": {
+        "json": "[ { \"STRING\": \"\" }, \"WRITE\", { \"STRING\": \"\" }, \"LENGTH\", \"WRITE\" ]",
+        "output": "\"\", 0",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "unicode_bytes",
+      "source": "{ s = \"Я\"; write(s.length); write(s[0]); write(s[1]); write(s); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": { \"assn\": { \"dst\": \"s\", \"src\": { \"string\": \"Я\" } } },\n    \"right\": {\n      \"seq\": {\n        \"left\": { \"write\": { \"length\": { \"var\": \"s\" } } },\n        \"right\": {\n          \"seq\": {\n            \"left\": {\n              \"write\": { \"elem\": { \"var\": \"s\" }, \"index\": { \"const\": 0 } }\n            },\n            \"right\": {\n              \"seq\": {\n                \"left\": {\n                  \"write\": {\n                    \"elem\": { \"var\": \"s\" },\n                    \"index\": { \"const\": 1 }\n                  }\n                },\n                \"right\": { \"write\": { \"var\": \"s\" } }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "2, 208, 175, \"Я\"",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"STRING\": \"Я\" },\n  { \"ST\": \"s\" },\n  { \"LD\": \"s\" },\n  \"LENGTH\",\n  \"WRITE\",\n  { \"LD\": \"s\" },\n  { \"CONST\": 0 },\n  \"ELEM\",\n  \"WRITE\",\n  { \"LD\": \"s\" },\n  { \"CONST\": 1 },\n  \"ELEM\",\n  \"WRITE\",\n  { \"LD\": \"s\" },\n  \"WRITE\"\n]",
+        "output": "2, 208, 175, \"Я\"",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "string_alias",
+      "source": "{ s = \"abc\"; b = s; write(s); s[0] = 90; write(b); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": { \"assn\": { \"dst\": \"s\", \"src\": { \"string\": \"abc\" } } },\n    \"right\": {\n      \"seq\": {\n        \"left\": { \"assn\": { \"dst\": \"b\", \"src\": { \"var\": \"s\" } } },\n        \"right\": {\n          \"seq\": {\n            \"left\": { \"write\": { \"var\": \"s\" } },\n            \"right\": {\n              \"seq\": {\n                \"left\": {\n                  \"set\": {\n                    \"dst\": { \"var\": \"s\" },\n                    \"idx\": { \"const\": 0 },\n                    \"value\": { \"const\": 90 }\n                  }\n                },\n                \"right\": { \"write\": { \"var\": \"b\" } }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "\"Zbc\", \"Zbc\"",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"STRING\": \"abc\" },\n  { \"ST\": \"s\" },\n  { \"LD\": \"s\" },\n  { \"ST\": \"b\" },\n  { \"LD\": \"s\" },\n  \"WRITE\",\n  { \"LD\": \"s\" },\n  { \"CONST\": 0 },\n  { \"CONST\": 90 },\n  \"SET\",\n  { \"LD\": \"b\" },\n  \"WRITE\"\n]",
+        "output": "\"Zbc\", \"Zbc\"",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "array_alias",
+      "source": "{ a = [1, 2]; b = a; write(a); b[1] = 9; write(a); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"assn\": {\n        \"dst\": \"a\",\n        \"src\": { \"array\": [ { \"const\": 1 }, { \"const\": 2 } ] }\n      }\n    },\n    \"right\": {\n      \"seq\": {\n        \"left\": { \"assn\": { \"dst\": \"b\", \"src\": { \"var\": \"a\" } } },\n        \"right\": {\n          \"seq\": {\n            \"left\": { \"write\": { \"var\": \"a\" } },\n            \"right\": {\n              \"seq\": {\n                \"left\": {\n                  \"set\": {\n                    \"dst\": { \"var\": \"b\" },\n                    \"idx\": { \"const\": 1 },\n                    \"value\": { \"const\": 9 }\n                  }\n                },\n                \"right\": { \"write\": { \"var\": \"a\" } }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "[1, 9], [1, 9]",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"CONST\": 2 },\n  { \"ARRAY\": 2 },\n  { \"ST\": \"a\" },\n  { \"LD\": \"a\" },\n  { \"ST\": \"b\" },\n  { \"LD\": \"a\" },\n  \"WRITE\",\n  { \"LD\": \"b\" },\n  { \"CONST\": 1 },\n  { \"CONST\": 9 },\n  \"SET\",\n  { \"LD\": \"a\" },\n  \"WRITE\"\n]",
+        "output": "[1, 9], [1, 9]",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "nested_set",
+      "source": "{ a = [1, [2, 3], \"x\"]; a[1][0] = 9; a[0] = \"changed\"; write(a); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"assn\": {\n        \"dst\": \"a\",\n        \"src\": {\n          \"array\": [\n            { \"const\": 1 },\n            { \"array\": [ { \"const\": 2 }, { \"const\": 3 } ] },\n            { \"string\": \"x\" }\n          ]\n        }\n      }\n    },\n    \"right\": {\n      \"seq\": {\n        \"left\": {\n          \"set\": {\n            \"dst\": { \"elem\": { \"var\": \"a\" }, \"index\": { \"const\": 1 } },\n            \"idx\": { \"const\": 0 },\n            \"value\": { \"const\": 9 }\n          }\n        },\n        \"right\": {\n          \"seq\": {\n            \"left\": {\n              \"set\": {\n                \"dst\": { \"var\": \"a\" },\n                \"idx\": { \"const\": 0 },\n                \"value\": { \"string\": \"changed\" }\n              }\n            },\n            \"right\": { \"write\": { \"var\": \"a\" } }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "[\"changed\", [9, 3], \"x\"]",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"CONST\": 2 },\n  { \"CONST\": 3 },\n  { \"ARRAY\": 2 },\n  { \"STRING\": \"x\" },\n  { \"ARRAY\": 3 },\n  { \"ST\": \"a\" },\n  { \"LD\": \"a\" },\n  { \"CONST\": 1 },\n  \"ELEM\",\n  { \"CONST\": 0 },\n  { \"CONST\": 9 },\n  \"SET\",\n  { \"LD\": \"a\" },\n  { \"CONST\": 0 },\n  { \"STRING\": \"changed\" },\n  \"SET\",\n  { \"LD\": \"a\" },\n  \"WRITE\"\n]",
+        "output": "[\"changed\", [9, 3], \"x\"]",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "constructor",
+      "source": "{ a = Foo(1, \"x\"); a[0] = 9; write(a); write(a.length); write(a[1]); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"assn\": {\n        \"dst\": \"a\",\n        \"src\": {\n          \"sexp\": \"Foo\",\n          \"args\": [ { \"const\": 1 }, { \"string\": \"x\" } ]\n        }\n      }\n    },\n    \"right\": {\n      \"seq\": {\n        \"left\": {\n          \"set\": {\n            \"dst\": { \"var\": \"a\" },\n            \"idx\": { \"const\": 0 },\n            \"value\": { \"const\": 9 }\n          }\n        },\n        \"right\": {\n          \"seq\": {\n            \"left\": { \"write\": { \"var\": \"a\" } },\n            \"right\": {\n              \"seq\": {\n                \"left\": { \"write\": { \"length\": { \"var\": \"a\" } } },\n                \"right\": {\n                  \"write\": {\n                    \"elem\": { \"var\": \"a\" },\n                    \"index\": { \"const\": 1 }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "Foo (9, \"x\"), 2, \"x\"",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"STRING\": \"x\" },\n  { \"SEXP\": [ \"Foo\", 2 ] },\n  { \"ST\": \"a\" },\n  { \"LD\": \"a\" },\n  { \"CONST\": 0 },\n  { \"CONST\": 9 },\n  \"SET\",\n  { \"LD\": \"a\" },\n  \"WRITE\",\n  { \"LD\": \"a\" },\n  \"LENGTH\",\n  \"WRITE\",\n  { \"LD\": \"a\" },\n  { \"CONST\": 1 },\n  \"ELEM\",\n  \"WRITE\"\n]",
+        "output": "Foo (9, \"x\"), 2, \"x\"",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "constructor_alias",
+      "source": "{ a = Foo(1); b = a; b[0] = 9; write(a); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"assn\": {\n        \"dst\": \"a\",\n        \"src\": { \"sexp\": \"Foo\", \"args\": [ { \"const\": 1 } ] }\n      }\n    },\n    \"right\": {\n      \"seq\": {\n        \"left\": { \"assn\": { \"dst\": \"b\", \"src\": { \"var\": \"a\" } } },\n        \"right\": {\n          \"seq\": {\n            \"left\": {\n              \"set\": {\n                \"dst\": { \"var\": \"b\" },\n                \"idx\": { \"const\": 0 },\n                \"value\": { \"const\": 9 }\n              }\n            },\n            \"right\": { \"write\": { \"var\": \"a\" } }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "Foo (9)",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"SEXP\": [ \"Foo\", 1 ] },\n  { \"ST\": \"a\" },\n  { \"LD\": \"a\" },\n  { \"ST\": \"b\" },\n  { \"LD\": \"b\" },\n  { \"CONST\": 0 },\n  { \"CONST\": 9 },\n  \"SET\",\n  { \"LD\": \"a\" },\n  \"WRITE\"\n]",
+        "output": "Foo (9)",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "nullary_constructor",
+      "source": "{ write(Nil); write(Nil.length); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": { \"write\": { \"sexp\": \"Nil\", \"args\": [] } },\n    \"right\": { \"write\": { \"length\": { \"sexp\": \"Nil\", \"args\": [] } } }\n  }\n}",
+        "output": "Nil, 0",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"SEXP\": [ \"Nil\", 0 ] },\n  \"WRITE\",\n  { \"SEXP\": [ \"Nil\", 0 ] },\n  \"LENGTH\",\n  \"WRITE\"\n]",
+        "output": "Nil, 0",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "nested_constructor",
+      "source": "{ write(Tree(Leaf(1), Leaf(\"x\"))); }",
+      "ast": {
+        "json": "{\n  \"write\": {\n    \"sexp\": \"Tree\",\n    \"args\": [\n      { \"sexp\": \"Leaf\", \"args\": [ { \"const\": 1 } ] },\n      { \"sexp\": \"Leaf\", \"args\": [ { \"string\": \"x\" } ] }\n    ]\n  }\n}",
+        "output": "Tree (Leaf (1), Leaf (\"x\"))",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"SEXP\": [ \"Leaf\", 1 ] },\n  { \"STRING\": \"x\" },\n  { \"SEXP\": [ \"Leaf\", 1 ] },\n  { \"SEXP\": [ \"Tree\", 2 ] },\n  \"WRITE\"\n]",
+        "output": "Tree (Leaf (1), Leaf (\"x\"))",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "proper_list",
+      "source": "{ write({1, 2, 3}); }",
+      "ast": {
+        "json": "{\n  \"write\": {\n    \"sexp\": \"cons\",\n    \"args\": [\n      { \"const\": 1 },\n      {\n        \"sexp\": \"cons\",\n        \"args\": [\n          { \"const\": 2 },\n          {\n            \"sexp\": \"cons\",\n            \"args\": [ { \"const\": 3 }, { \"sexp\": \"nil\", \"args\": [] } ]\n          }\n        ]\n      }\n    ]\n  }\n}",
+        "output": "{1, 2, 3}",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"CONST\": 2 },\n  { \"CONST\": 3 },\n  { \"SEXP\": [ \"nil\", 0 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  \"WRITE\"\n]",
+        "output": "{1, 2, 3}",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "cons_lowering",
+      "source": "{ write(1 : {2, 3}); }",
+      "ast": {
+        "json": "{\n  \"write\": {\n    \"sexp\": \"cons\",\n    \"args\": [\n      { \"const\": 1 },\n      {\n        \"sexp\": \"cons\",\n        \"args\": [\n          { \"const\": 2 },\n          {\n            \"sexp\": \"cons\",\n            \"args\": [ { \"const\": 3 }, { \"sexp\": \"nil\", \"args\": [] } ]\n          }\n        ]\n      }\n    ]\n  }\n}",
+        "output": "{1, 2, 3}",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"CONST\": 2 },\n  { \"CONST\": 3 },\n  { \"SEXP\": [ \"nil\", 0 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  \"WRITE\"\n]",
+        "output": "{1, 2, 3}",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "nested_list",
+      "source": "{ write({1, {2, 3}, Cons(4, Nil)}); }",
+      "ast": {
+        "json": "{\n  \"write\": {\n    \"sexp\": \"cons\",\n    \"args\": [\n      { \"const\": 1 },\n      {\n        \"sexp\": \"cons\",\n        \"args\": [\n          {\n            \"sexp\": \"cons\",\n            \"args\": [\n              { \"const\": 2 },\n              {\n                \"sexp\": \"cons\",\n                \"args\": [ { \"const\": 3 }, { \"sexp\": \"nil\", \"args\": [] } ]\n              }\n            ]\n          },\n          {\n            \"sexp\": \"cons\",\n            \"args\": [\n              {\n                \"sexp\": \"Cons\",\n                \"args\": [ { \"const\": 4 }, { \"sexp\": \"Nil\", \"args\": [] } ]\n              },\n              { \"sexp\": \"nil\", \"args\": [] }\n            ]\n          }\n        ]\n      }\n    ]\n  }\n}",
+        "output": "{1, {2, 3}, Cons (4, Nil)}",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"CONST\": 2 },\n  { \"CONST\": 3 },\n  { \"SEXP\": [ \"nil\", 0 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  { \"CONST\": 4 },\n  { \"SEXP\": [ \"Nil\", 0 ] },\n  { \"SEXP\": [ \"Cons\", 2 ] },\n  { \"SEXP\": [ \"nil\", 0 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  \"WRITE\"\n]",
+        "output": "{1, {2, 3}, Cons (4, Nil)}",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "list_mutation",
+      "source": "{ a = {1, 2}; a[0] = 9; write(a); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"assn\": {\n        \"dst\": \"a\",\n        \"src\": {\n          \"sexp\": \"cons\",\n          \"args\": [\n            { \"const\": 1 },\n            {\n              \"sexp\": \"cons\",\n              \"args\": [ { \"const\": 2 }, { \"sexp\": \"nil\", \"args\": [] } ]\n            }\n          ]\n        }\n      }\n    },\n    \"right\": {\n      \"seq\": {\n        \"left\": {\n          \"set\": {\n            \"dst\": { \"var\": \"a\" },\n            \"idx\": { \"const\": 0 },\n            \"value\": { \"const\": 9 }\n          }\n        },\n        \"right\": { \"write\": { \"var\": \"a\" } }\n      }\n    }\n  }\n}",
+        "output": "{9, 2}",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"CONST\": 2 },\n  { \"SEXP\": [ \"nil\", 0 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  { \"SEXP\": [ \"cons\", 2 ] },\n  { \"ST\": \"a\" },\n  { \"LD\": \"a\" },\n  { \"CONST\": 0 },\n  { \"CONST\": 9 },\n  \"SET\",\n  { \"LD\": \"a\" },\n  \"WRITE\"\n]",
+        "output": "{9, 2}",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "structured_input",
+      "source": "{ read(a); read(b); read(c); write(a); write(b); write(c); }",
+      "input": "\"abc\", [1, [-2, \"x\"]], Cons(1, Nil)",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": { \"read\": \"a\" },\n    \"right\": {\n      \"seq\": {\n        \"left\": { \"read\": \"b\" },\n        \"right\": {\n          \"seq\": {\n            \"left\": { \"read\": \"c\" },\n            \"right\": {\n              \"seq\": {\n                \"left\": { \"write\": { \"var\": \"a\" } },\n                \"right\": {\n                  \"seq\": {\n                    \"left\": { \"write\": { \"var\": \"b\" } },\n                    \"right\": { \"write\": { \"var\": \"c\" } }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "\"abc\", [1, [-2, \"x\"]], Cons (1, Nil)",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  \"READ\",\n  { \"ST\": \"a\" },\n  \"READ\",\n  { \"ST\": \"b\" },\n  \"READ\",\n  { \"ST\": \"c\" },\n  { \"LD\": \"a\" },\n  \"WRITE\",\n  { \"LD\": \"b\" },\n  \"WRITE\",\n  { \"LD\": \"c\" },\n  \"WRITE\"\n]",
+        "output": "\"abc\", [1, [-2, \"x\"]], Cons (1, Nil)",
+        "error": ""
+      }
+    },
+    {
+      "name": "array_length_comparison",
+      "source": "{ write([9] < [1, 2]); write([1, 9] < [2]); write([1, [2]] == [1, [2]]); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"write\": {\n        \"binop\": \"<\",\n        \"left\": { \"array\": [ { \"const\": 9 } ] },\n        \"right\": { \"array\": [ { \"const\": 1 }, { \"const\": 2 } ] }\n      }\n    },\n    \"right\": {\n      \"seq\": {\n        \"left\": {\n          \"write\": {\n            \"binop\": \"<\",\n            \"left\": { \"array\": [ { \"const\": 1 }, { \"const\": 9 } ] },\n            \"right\": { \"array\": [ { \"const\": 2 } ] }\n          }\n        },\n        \"right\": {\n          \"write\": {\n            \"binop\": \"==\",\n            \"left\": {\n              \"array\": [ { \"const\": 1 }, { \"array\": [ { \"const\": 2 } ] } ]\n            },\n            \"right\": {\n              \"array\": [ { \"const\": 1 }, { \"array\": [ { \"const\": 2 } ] } ]\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "1, 0, 1",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 9 },\n  { \"ARRAY\": 1 },\n  { \"CONST\": 1 },\n  { \"CONST\": 2 },\n  { \"ARRAY\": 2 },\n  { \"BINOP\": \"<\" },\n  \"WRITE\",\n  { \"CONST\": 1 },\n  { \"CONST\": 9 },\n  { \"ARRAY\": 2 },\n  { \"CONST\": 2 },\n  { \"ARRAY\": 1 },\n  { \"BINOP\": \"<\" },\n  \"WRITE\",\n  { \"CONST\": 1 },\n  { \"CONST\": 2 },\n  { \"ARRAY\": 1 },\n  { \"ARRAY\": 2 },\n  { \"CONST\": 1 },\n  { \"CONST\": 2 },\n  { \"ARRAY\": 1 },\n  { \"ARRAY\": 2 },\n  { \"BINOP\": \"==\" },\n  \"WRITE\"\n]",
+        "output": "1, 0, 1",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "string_comparison",
+      "source": "{ write(\"ab\" < \"ac\"); write(\"a\" == \"a\"); write(\"b\" != \"a\"); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"write\": {\n        \"binop\": \"<\",\n        \"left\": { \"string\": \"ab\" },\n        \"right\": { \"string\": \"ac\" }\n      }\n    },\n    \"right\": {\n      \"seq\": {\n        \"left\": {\n          \"write\": {\n            \"binop\": \"==\",\n            \"left\": { \"string\": \"a\" },\n            \"right\": { \"string\": \"a\" }\n          }\n        },\n        \"right\": {\n          \"write\": {\n            \"binop\": \"!=\",\n            \"left\": { \"string\": \"b\" },\n            \"right\": { \"string\": \"a\" }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "1, 1, 1",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"STRING\": \"ab\" },\n  { \"STRING\": \"ac\" },\n  { \"BINOP\": \"<\" },\n  \"WRITE\",\n  { \"STRING\": \"a\" },\n  { \"STRING\": \"a\" },\n  { \"BINOP\": \"==\" },\n  \"WRITE\",\n  { \"STRING\": \"b\" },\n  { \"STRING\": \"a\" },\n  { \"BINOP\": \"!=\" },\n  \"WRITE\"\n]",
+        "output": "1, 1, 1",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "fresh_literals",
+      "source": "{ i = 0; while (i < 2) { s = \"a\"; a = [1]; write(s); write(a[0]); s[0] = 90; a[0] = 9; i += 1; } }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": { \"assn\": { \"dst\": \"i\", \"src\": { \"const\": 0 } } },\n    \"right\": {\n      \"while\": {\n        \"cond\": {\n          \"binop\": \"<\",\n          \"left\": { \"var\": \"i\" },\n          \"right\": { \"const\": 2 }\n        },\n        \"body\": {\n          \"seq\": {\n            \"left\": { \"assn\": { \"dst\": \"s\", \"src\": { \"string\": \"a\" } } },\n            \"right\": {\n              \"seq\": {\n                \"left\": {\n                  \"assn\": {\n                    \"dst\": \"a\",\n                    \"src\": { \"array\": [ { \"const\": 1 } ] }\n                  }\n                },\n                \"right\": {\n                  \"seq\": {\n                    \"left\": { \"write\": { \"var\": \"s\" } },\n                    \"right\": {\n                      \"seq\": {\n                        \"left\": {\n                          \"write\": {\n                            \"elem\": { \"var\": \"a\" },\n                            \"index\": { \"const\": 0 }\n                          }\n                        },\n                        \"right\": {\n                          \"seq\": {\n                            \"left\": {\n                              \"set\": {\n                                \"dst\": { \"var\": \"s\" },\n                                \"idx\": { \"const\": 0 },\n                                \"value\": { \"const\": 90 }\n                              }\n                            },\n                            \"right\": {\n                              \"seq\": {\n                                \"left\": {\n                                  \"set\": {\n                                    \"dst\": { \"var\": \"a\" },\n                                    \"idx\": { \"const\": 0 },\n                                    \"value\": { \"const\": 9 }\n                                  }\n                                },\n                                \"right\": {\n                                  \"assn\": {\n                                    \"dst\": \"i\",\n                                    \"src\": {\n                                      \"binop\": \"+\",\n                                      \"left\": { \"var\": \"i\" },\n                                      \"right\": { \"const\": 1 }\n                                    }\n                                  }\n                                }\n                              }\n                            }\n                          }\n                        }\n                      }\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "\"Z\", 1, \"Z\", 1",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 0 },\n  { \"ST\": \"i\" },\n  { \"JMP\": \"L_while_cond_3\" },\n  { \"LABEL\": \"L_while_cody_2\" },\n  { \"STRING\": \"a\" },\n  { \"ST\": \"s\" },\n  { \"CONST\": 1 },\n  { \"ARRAY\": 1 },\n  { \"ST\": \"a\" },\n  { \"LD\": \"s\" },\n  \"WRITE\",\n  { \"LD\": \"a\" },\n  { \"CONST\": 0 },\n  \"ELEM\",\n  \"WRITE\",\n  { \"LD\": \"s\" },\n  { \"CONST\": 0 },\n  { \"CONST\": 90 },\n  \"SET\",\n  { \"LD\": \"a\" },\n  { \"CONST\": 0 },\n  { \"CONST\": 9 },\n  \"SET\",\n  { \"LD\": \"i\" },\n  { \"CONST\": 1 },\n  { \"BINOP\": \"+\" },\n  { \"ST\": \"i\" },\n  { \"LABEL\": \"L_while_cond_3\" },\n  { \"LD\": \"i\" },\n  { \"CONST\": 2 },\n  { \"BINOP\": \"<\" },\n  { \"JNZ\": \"L_while_cody_2\" }\n]",
+        "output": "\"Z\", 1, \"Z\", 1",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "control_flow",
+      "source": "{ s = 0; for (i = 0; i < 3; i += 1) { if (i == 1) s += 10; else s += i; } do { s -= 1; } while (s > 10); write(s); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": { \"assn\": { \"dst\": \"s\", \"src\": { \"const\": 0 } } },\n    \"right\": {\n      \"seq\": {\n        \"left\": {\n          \"seq\": {\n            \"left\": { \"assn\": { \"dst\": \"i\", \"src\": { \"const\": 0 } } },\n            \"right\": {\n              \"while\": {\n                \"cond\": {\n                  \"binop\": \"<\",\n                  \"left\": { \"var\": \"i\" },\n                  \"right\": { \"const\": 3 }\n                },\n                \"body\": {\n                  \"seq\": {\n                    \"left\": {\n                      \"if\": {\n                        \"cond\": {\n                          \"binop\": \"==\",\n                          \"left\": { \"var\": \"i\" },\n                          \"right\": { \"const\": 1 }\n                        },\n                        \"then\": {\n                          \"assn\": {\n                            \"dst\": \"s\",\n                            \"src\": {\n                              \"binop\": \"+\",\n                              \"left\": { \"var\": \"s\" },\n                              \"right\": { \"const\": 10 }\n                            }\n                          }\n                        },\n                        \"else\": {\n                          \"assn\": {\n                            \"dst\": \"s\",\n                            \"src\": {\n                              \"binop\": \"+\",\n                              \"left\": { \"var\": \"s\" },\n                              \"right\": { \"var\": \"i\" }\n                            }\n                          }\n                        }\n                      }\n                    },\n                    \"right\": {\n                      \"assn\": {\n                        \"dst\": \"i\",\n                        \"src\": {\n                          \"binop\": \"+\",\n                          \"left\": { \"var\": \"i\" },\n                          \"right\": { \"const\": 1 }\n                        }\n                      }\n                    }\n                  }\n                }\n              }\n            }\n          }\n        },\n        \"right\": {\n          \"seq\": {\n            \"left\": {\n              \"do\": {\n                \"body\": {\n                  \"assn\": {\n                    \"dst\": \"s\",\n                    \"src\": {\n                      \"binop\": \"-\",\n                      \"left\": { \"var\": \"s\" },\n                      \"right\": { \"const\": 1 }\n                    }\n                  }\n                },\n                \"cond\": {\n                  \"binop\": \">\",\n                  \"left\": { \"var\": \"s\" },\n                  \"right\": { \"const\": 10 }\n                }\n              }\n            },\n            \"right\": { \"write\": { \"var\": \"s\" } }\n          }\n        }\n      }\n    }\n  }\n}",
+        "output": "10",
+        "error": ""
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 0 },\n  { \"ST\": \"s\" },\n  { \"CONST\": 0 },\n  { \"ST\": \"i\" },\n  { \"JMP\": \"L_while_cond_5\" },\n  { \"LABEL\": \"L_while_cody_4\" },\n  { \"LD\": \"i\" },\n  { \"CONST\": 1 },\n  { \"BINOP\": \"==\" },\n  { \"JZ\": \"L_else_7\" },\n  { \"LD\": \"s\" },\n  { \"CONST\": 10 },\n  { \"BINOP\": \"+\" },\n  { \"ST\": \"s\" },\n  { \"JMP\": \"L_seq_6\" },\n  { \"LABEL\": \"L_else_7\" },\n  { \"LD\": \"s\" },\n  { \"LD\": \"i\" },\n  { \"BINOP\": \"+\" },\n  { \"ST\": \"s\" },\n  { \"LABEL\": \"L_seq_6\" },\n  { \"LD\": \"i\" },\n  { \"CONST\": 1 },\n  { \"BINOP\": \"+\" },\n  { \"ST\": \"i\" },\n  { \"LABEL\": \"L_while_cond_5\" },\n  { \"LD\": \"i\" },\n  { \"CONST\": 3 },\n  { \"BINOP\": \"<\" },\n  { \"JNZ\": \"L_while_cody_4\" },\n  { \"LABEL\": \"L_while_cody_9\" },\n  { \"LD\": \"s\" },\n  { \"CONST\": 1 },\n  { \"BINOP\": \"-\" },\n  { \"ST\": \"s\" },\n  { \"LABEL\": \"L_while_cond_10\" },\n  { \"LD\": \"s\" },\n  { \"CONST\": 10 },\n  { \"BINOP\": \">\" },\n  { \"JNZ\": \"L_while_cody_9\" },\n  { \"LD\": \"s\" },\n  \"WRITE\"\n]",
+        "output": "10",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "character_literal",
+      "source": "{ write('A'); }",
+      "ast": {
+        "json": "{ \"write\": { \"const\": 65 } }",
+        "output": "65",
+        "error": ""
+      },
+      "sm": {
+        "json": "[ { \"CONST\": 65 }, \"WRITE\" ]",
+        "output": "65",
+        "error": ""
+      },
+      "input": "0"
+    },
+    {
+      "name": "division_error",
+      "source": "{ write(1); write(1 / 0); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": { \"write\": { \"const\": 1 } },\n    \"right\": {\n      \"write\": {\n        \"binop\": \"/\",\n        \"left\": { \"const\": 1 },\n        \"right\": { \"const\": 0 }\n      }\n    }\n  }\n}",
+        "output": "",
+        "error": "Division_by_zero"
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  \"WRITE\",\n  { \"CONST\": 1 },\n  { \"CONST\": 0 },\n  { \"BINOP\": \"/\" },\n  \"WRITE\"\n]",
+        "output": "",
+        "error": "Division_by_zero"
+      },
+      "input": "0"
+    },
+    {
+      "name": "modulo_error",
+      "source": "{ write(1 % 0); }",
+      "ast": {
+        "json": "{\n  \"write\": { \"binop\": \"%\", \"left\": { \"const\": 1 }, \"right\": { \"const\": 0 } }\n}",
+        "output": "",
+        "error": "Division_by_zero"
+      },
+      "sm": {
+        "json": "[ { \"CONST\": 1 }, { \"CONST\": 0 }, { \"BINOP\": \"%\" }, \"WRITE\" ]",
+        "output": "",
+        "error": "Division_by_zero"
+      },
+      "input": "0"
+    },
+    {
+      "name": "undefined_variable",
+      "source": "{ write(missing); }",
+      "ast": {
+        "json": "{ \"write\": { \"var\": \"missing\" } }",
+        "output": "",
+        "error": "ERROR: variable \"missing\" is undefined"
+      },
+      "sm": {
+        "json": "[ { \"LD\": \"missing\" }, \"WRITE\" ]",
+        "output": "",
+        "error": "ERROR: variable \"missing\" is undefined"
+      },
+      "input": "0"
+    },
+    {
+      "name": "negative_index",
+      "source": "{ a = [1]; write(a[0 - 1]); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"assn\": { \"dst\": \"a\", \"src\": { \"array\": [ { \"const\": 1 } ] } }\n    },\n    \"right\": {\n      \"write\": {\n        \"elem\": { \"var\": \"a\" },\n        \"index\": {\n          \"binop\": \"-\",\n          \"left\": { \"const\": 0 },\n          \"right\": { \"const\": 1 }\n        }\n      }\n    }\n  }\n}",
+        "output": "",
+        "error": "ERROR: index -1 is out of bounds [0, 1)"
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"ARRAY\": 1 },\n  { \"ST\": \"a\" },\n  { \"LD\": \"a\" },\n  { \"CONST\": 0 },\n  { \"CONST\": 1 },\n  { \"BINOP\": \"-\" },\n  \"ELEM\",\n  \"WRITE\"\n]",
+        "output": "",
+        "error": "ERROR: index -1 is out of bounds [0, 1)"
+      },
+      "input": "0"
+    },
+    {
+      "name": "large_index",
+      "source": "{ a = [1]; a[1] = 2; }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"assn\": { \"dst\": \"a\", \"src\": { \"array\": [ { \"const\": 1 } ] } }\n    },\n    \"right\": {\n      \"set\": {\n        \"dst\": { \"var\": \"a\" },\n        \"idx\": { \"const\": 1 },\n        \"value\": { \"const\": 2 }\n      }\n    }\n  }\n}",
+        "output": "",
+        "error": "ERROR: index 1 is out of bounds [0, 1)"
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"ARRAY\": 1 },\n  { \"ST\": \"a\" },\n  { \"LD\": \"a\" },\n  { \"CONST\": 1 },\n  { \"CONST\": 2 },\n  \"SET\"\n]",
+        "output": "",
+        "error": "ERROR: index 1 is out of bounds [0, 1)"
+      },
+      "input": "0"
+    },
+    {
+      "name": "invalid_string_byte",
+      "source": "{ s = \"a\"; s[0] = 256; }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": { \"assn\": { \"dst\": \"s\", \"src\": { \"string\": \"a\" } } },\n    \"right\": {\n      \"set\": {\n        \"dst\": { \"var\": \"s\" },\n        \"idx\": { \"const\": 0 },\n        \"value\": { \"const\": 256 }\n      }\n    }\n  }\n}",
+        "output": "",
+        "error": "Invalid_argument(\"Char.chr\")"
+      },
+      "sm": {
+        "json": "[\n  { \"STRING\": \"a\" },\n  { \"ST\": \"s\" },\n  { \"LD\": \"s\" },\n  { \"CONST\": 0 },\n  { \"CONST\": 256 },\n  \"SET\"\n]",
+        "output": "",
+        "error": "Invalid_argument(\"Char.chr\")"
+      },
+      "input": "0"
+    },
+    {
+      "name": "mixed_comparison",
+      "source": "{ write(1 == \"1\"); }",
+      "ast": {
+        "json": "{\n  \"write\": {\n    \"binop\": \"==\",\n    \"left\": { \"const\": 1 },\n    \"right\": { \"string\": \"1\" }\n  }\n}",
+        "output": "",
+        "error": "ERROR: binary operator \"=\" is applied to 1 and \"1\""
+      },
+      "sm": {
+        "json": "[ { \"CONST\": 1 }, { \"STRING\": \"1\" }, { \"BINOP\": \"==\" }, \"WRITE\" ]",
+        "output": "",
+        "error": "ERROR: binary operator \"=\" is applied to 1 and \"1\""
+      },
+      "input": "0"
+    },
+    {
+      "name": "constructor_comparison",
+      "source": "{ write(Nil == Nil); }",
+      "ast": {
+        "json": "{\n  \"write\": {\n    \"binop\": \"==\",\n    \"left\": { \"sexp\": \"Nil\", \"args\": [] },\n    \"right\": { \"sexp\": \"Nil\", \"args\": [] }\n  }\n}",
+        "output": "",
+        "error": "ERROR: binary operator \"=\" is applied to Nil and Nil"
+      },
+      "sm": {
+        "json": "[\n  { \"SEXP\": [ \"Nil\", 0 ] },\n  { \"SEXP\": [ \"Nil\", 0 ] },\n  { \"BINOP\": \"==\" },\n  \"WRITE\"\n]",
+        "output": "",
+        "error": "ERROR: binary operator \"=\" is applied to Nil and Nil"
+      },
+      "input": "0"
+    },
+    {
+      "name": "noninteger_condition",
+      "source": "{ if (\"x\") write(1); else write(2); }",
+      "ast": {
+        "json": "{\n  \"if\": {\n    \"cond\": { \"string\": \"x\" },\n    \"then\": { \"write\": { \"const\": 1 } },\n    \"else\": { \"write\": { \"const\": 2 } }\n  }\n}",
+        "output": "",
+        "error": "ERROR: integer value expected but \"\"x\"\" given"
+      },
+      "sm": {
+        "json": "[\n  { \"STRING\": \"x\" },\n  { \"JZ\": \"L_else_1\" },\n  { \"CONST\": 1 },\n  \"WRITE\",\n  { \"JMP\": \"L_end_0\" },\n  { \"LABEL\": \"L_else_1\" },\n  { \"CONST\": 2 },\n  \"WRITE\",\n  { \"LABEL\": \"L_end_0\" }\n]",
+        "output": "",
+        "error": "ERROR: integer value expected but \"\"x\"\" given"
+      },
+      "input": "0"
+    },
+    {
+      "name": "no_input",
+      "source": "{ read(a); read(b); }",
+      "input": "1",
+      "ast": {
+        "json": "{ \"seq\": { \"left\": { \"read\": \"a\" }, \"right\": { \"read\": \"b\" } } }",
+        "output": "",
+        "error": "ERROR: input exhausted"
+      },
+      "sm": {
+        "json": "[ \"READ\", { \"ST\": \"a\" }, \"READ\", { \"ST\": \"b\" } ]",
+        "output": "",
+        "error": "ERROR: input exhausted"
+      }
+    },
+    {
+      "name": "right_first_error",
+      "source": "{ write(missing + 1 / 0); }",
+      "ast": {
+        "json": "{\n  \"write\": {\n    \"binop\": \"+\",\n    \"left\": { \"var\": \"missing\" },\n    \"right\": {\n      \"binop\": \"/\",\n      \"left\": { \"const\": 1 },\n      \"right\": { \"const\": 0 }\n    }\n  }\n}",
+        "output": "",
+        "error": "Division_by_zero"
+      },
+      "sm": {
+        "json": "[\n  { \"LD\": \"missing\" },\n  { \"CONST\": 1 },\n  { \"CONST\": 0 },\n  { \"BINOP\": \"/\" },\n  { \"BINOP\": \"+\" },\n  \"WRITE\"\n]",
+        "output": "",
+        "error": "ERROR: variable \"missing\" is undefined"
+      },
+      "input": "0"
+    },
+    {
+      "name": "set_value_first_error",
+      "source": "{ missing[0] = 1 / 0; }",
+      "ast": {
+        "json": "{\n  \"set\": {\n    \"dst\": { \"var\": \"missing\" },\n    \"idx\": { \"const\": 0 },\n    \"value\": {\n      \"binop\": \"/\",\n      \"left\": { \"const\": 1 },\n      \"right\": { \"const\": 0 }\n    }\n  }\n}",
+        "output": "",
+        "error": "Division_by_zero"
+      },
+      "sm": {
+        "json": "[\n  { \"LD\": \"missing\" },\n  { \"CONST\": 0 },\n  { \"CONST\": 1 },\n  { \"CONST\": 0 },\n  { \"BINOP\": \"/\" },\n  \"SET\"\n]",
+        "output": "",
+        "error": "ERROR: variable \"missing\" is undefined"
+      },
+      "input": "0"
+    },
+    {
+      "name": "improper_list",
+      "source": "{ write(1 : 2); }",
+      "ast": {
+        "json": "{ \"write\": { \"sexp\": \"cons\", \"args\": [ { \"const\": 1 }, { \"const\": 2 } ] } }",
+        "output": "",
+        "error": "File \"_none_\", line 1, characters -1-4: Pattern matching failed"
+      },
+      "sm": {
+        "json": "[ { \"CONST\": 1 }, { \"CONST\": 2 }, { \"SEXP\": [ \"cons\", 2 ] }, \"WRITE\" ]",
+        "output": "",
+        "error": "File \"_none_\", line 1, characters -1-4: Pattern matching failed"
+      },
+      "input": "0"
+    },
+    {
+      "name": "cyclic_array",
+      "source": "{ a = [1]; a[0] = a; write(a); }",
+      "ast": {
+        "json": "{\n  \"seq\": {\n    \"left\": {\n      \"assn\": { \"dst\": \"a\", \"src\": { \"array\": [ { \"const\": 1 } ] } }\n    },\n    \"right\": {\n      \"seq\": {\n        \"left\": {\n          \"set\": {\n            \"dst\": { \"var\": \"a\" },\n            \"idx\": { \"const\": 0 },\n            \"value\": { \"var\": \"a\" }\n          }\n        },\n        \"right\": { \"write\": { \"var\": \"a\" } }\n      }\n    }\n  }\n}",
+        "output": "",
+        "error": "Stack overflow"
+      },
+      "sm": {
+        "json": "[\n  { \"CONST\": 1 },\n  { \"ARRAY\": 1 },\n  { \"ST\": \"a\" },\n  { \"LD\": \"a\" },\n  { \"CONST\": 0 },\n  { \"LD\": \"a\" },\n  \"SET\",\n  { \"LD\": \"a\" },\n  \"WRITE\"\n]",
+        "output": "",
+        "error": "Stack overflow"
+      },
+      "input": "0"
+    }
+  ]
+}

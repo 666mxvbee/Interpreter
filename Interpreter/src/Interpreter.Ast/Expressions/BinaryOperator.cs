@@ -17,4 +17,5 @@ public enum BinaryOperator
     Multiply,
     Divide,
     Remainder,
+    Cons,
 }
