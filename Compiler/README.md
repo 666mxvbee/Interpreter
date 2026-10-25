@@ -9,9 +9,9 @@ with JSON output compatible with the C# stack machine and the
 The built-in Go stack machine is implemented in [vm.go](./vm.go), with its
 value types in [values.go](./values.go). It is part of this executable and does
 not need a separate project. The separate C# implementation is in
-[`../StackMachine`](../StackMachine), whose solution is
-`../StackMachine/StackMachine.slnx`. Opening only `Interpreter.slnx` does not
-include either of these projects.
+[`../StackMachine`](../StackMachine). The root `../Interpreter.slnx` includes
+all C# projects and their tests. Build the Go executable separately from this
+directory.
 
 ## Build and Run
 
@@ -21,6 +21,12 @@ include either of these projects.
 The source file is followed by optional input values supplied to `read()`.
 Input supports integers, characters, strings, arrays, lists, and constructors.
 Quote composite values for the shell, for example `'[1, [2, 3]]'`.
+
+Input strings use JSON escapes, matching both C# CLIs: `"a\nb"` contains a
+newline, `"a\"b"` contains a quote, and `"\u042f"` contains `Я`. This applies
+inside arrays and constructor arguments as well. Source-code strings retain
+the reference syntax described below: doubled quotes and literal backslashes.
+Zero-argument input constructors may be written as `Nil` or `Nil()`.
 
 ```sh
 ./smcompiler --compile-only --output output/program.json examples/example.txt
@@ -204,5 +210,19 @@ To compile and execute it with the built-in Go machine:
 The supplied data has sum `21`. The algorithm remains in the source program;
 the compiler and machines do not special-case it.
 
-The emitted `output/nested-sum.json` can be passed to the C# stack machine
-after its corresponding instruction/value extensions are integrated.
+From the repository root, pass the emitted JSON to the C# stack machine:
+
+```sh
+dotnet run --project StackMachine/src/StackMachine.Cli -- Compiler/output/nested-sum.json Interpreter/examples/input/nested-sum/input.txt
+```
+
+The cross-language runner builds the Go compiler in a temporary directory and
+checks its generated JSON with the C# machine and the saved reference results:
+
+```sh
+python tests/integration.py --no-build
+```
+
+Run that command from the repository root after building `Interpreter.slnx`.
+The runner also checks the matching AST fixtures, structured input, nested
+loops, nested sums, compile-only behavior, and failures without partial output.
