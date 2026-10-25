@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main, hw]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  PYTHONUTF8: '1'
+
+jobs:
+  csharp:
+    name: C# (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Restore
+        run: dotnet restore Interpreter.slnx
+      - name: Build
+        run: dotnet build Interpreter.slnx --no-restore --nologo -m:1
+      - name: Verify formatting
+        if: runner.os == 'Linux'
+        run: dotnet format Interpreter.slnx --no-restore --verify-no-changes
+      - name: Unit and reference tests
+        run: dotnet test Shared/tests/Language.Runtime.Tests/Language.Runtime.Tests.csproj --no-build --no-restore --nologo
+      - name: Interpreter CLI regressions
+        run: python Interpreter/tests/regression.py --no-build
+      - name: StackMachine CLI regressions
+        run: python StackMachine/tests/regression.py --no-build
+
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Compiler
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          cache-dependency-path: Compiler/go.mod
+      - name: Verify formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            printf '%s\n' "$unformatted"
+            exit 1
+          fi
+      - name: Build
+        run: go build -o ../artifacts/smcompiler .
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test -count=1 ./...
+
+  integration:
+    name: Integration
+    needs: [csharp, go]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          cache-dependency-path: Compiler/go.mod
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Build C# executors
+        run: dotnet build Interpreter.slnx --nologo -m:1
+      - name: Cross-language regression tests
+        run: python tests/integration.py --no-build

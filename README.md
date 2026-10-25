@@ -83,3 +83,21 @@ Use `--go`, `--dotnet`, or `--compiler` to select alternative executables.
 
 Depth limits are documented in each project's README. Go and C# use different
 controlled nesting limits; cycles and excessive depth produce diagnostics.
+
+## Continuous integration
+
+[GitHub Actions](./.github/workflows/ci.yml) runs on pull requests, pushes to
+`main` and `hw`, and manual dispatches:
+
+- C# builds, unit/reference tests, and CLI regressions on Linux and Windows.
+- C# formatting verification on Linux.
+- Go formatting, build, vet, and tests on Linux.
+- Cross-language integration tests on Linux after the C# and Go checks pass.
+
+`global.json` keeps SDK selection within stable .NET 10 feature bands, including
+when newer or preview SDKs are installed. CI uses Python 3.12 and the current
+stable Go toolchain; the Go language version remains defined in `Compiler/go.mod`.
+
+To enforce CI before merging, configure the repository's `main` ruleset to
+require `C# (ubuntu-latest)`, `C# (windows-latest)`, `Go`, and `Integration` after
+their first successful run. Adding a workflow does not itself prevent merges.
