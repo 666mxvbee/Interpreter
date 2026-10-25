@@ -38,6 +38,20 @@ func TestInvalidInputStringsAreRejected(t *testing.T) {
 	}
 }
 
+func TestInputZeroArgumentConstructors(t *testing.T) {
+	values, err := ParseInput("Nil, Nil(), [Foo()]")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := FormatOutput(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "Nil, Nil, [Foo]\n" {
+		t.Errorf("unexpected output %q", got)
+	}
+}
+
 func TestSourceStringsKeepReferenceSyntax(t *testing.T) {
 	cases := []struct{ text, want string }{
 		{`"a\nb"`, `a\nb`},

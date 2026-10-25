@@ -369,7 +369,7 @@ func (p *Parser) parsePrimary() Expr {
 	case TokConstructor:
 		var arguments []Expr
 		if p.accept(TokLParen, "") {
-			arguments = p.parseItems(TokRParen, false)
+			arguments = p.parseItems(TokRParen, p.allowEmptyArrays)
 		}
 		return SExpression{Name: t.Text, Arguments: arguments}
 	case TokLBracket:
