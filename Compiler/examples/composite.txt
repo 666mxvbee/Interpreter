@@ -1,0 +1,15 @@
+{
+    read(a);
+    write(a);
+    s = "abc";
+    b = s;
+    s[0] = 'Z';
+    write(b);
+    a = [1, [2, 3], s];
+    a[1][0] += 5;
+    write(a);
+    write(Cons(1, Nil));
+    write(1 : 2 : {});
+    write("Я".length);
+    write(2147483647 + 1);
+}

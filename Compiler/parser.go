@@ -10,8 +10,10 @@ type parseError struct{ msg string }
 func (e parseError) Error() string { return e.msg }
 
 type Parser struct {
-	toks []Token
-	pos  int
+	toks             []Token
+	pos              int
+	allowEmptyArrays bool
+	depth            int
 }
 
 func Parse(src string) (prog Stmt, err error) {
@@ -36,6 +38,8 @@ var kindNames = map[Kind]string{
 	TokEOF: "end of file", TokIdent: "identifier", TokConst: "number", TokKeyword: "keyword",
 	TokBinop: "operator", TokAssign: `"="`, TokLParen: `"("`, TokRParen: `")"`,
 	TokLBrace: `"{"`, TokRBrace: `"}"`, TokSemi: `";"`,
+	TokLBracket: `"["`, TokRBracket: `"]"`, TokComma: `","`, TokDot: `"."`,
+	TokString: "string", TokCharacter: "character", TokConstructor: "constructor",
 }
 
 func (p *Parser) peek() Token { return p.toks[p.pos] }
@@ -51,6 +55,15 @@ func (p *Parser) next() Token {
 func (p *Parser) fail(t Token, format string, args ...any) {
 	panic(parseError{fmt.Sprintf("%d:%d: ", t.Line, t.Col) + fmt.Sprintf(format, args...)})
 }
+
+func (p *Parser) enter() {
+	if p.depth >= maxNestingDepth {
+		p.fail(p.peek(), "syntax nesting exceeds the limit of %d", maxNestingDepth)
+	}
+	p.depth++
+}
+
+func (p *Parser) leave() { p.depth-- }
 
 func (p *Parser) is(kind Kind, text string) bool {
 	t := p.peek()
@@ -101,11 +114,13 @@ func seq(stmts []Stmt) Stmt {
 }
 
 func (p *Parser) parseStmt() Stmt {
+	p.enter()
+	defer p.leave()
 	t := p.peek()
 	switch t.Kind {
 	case TokLBrace:
-		return p.parseBlock()
-	case TokIdent:
+		return p.parseBlockOrAssignment()
+	case TokIdent, TokConstructor, TokString, TokCharacter, TokConst, TokLParen, TokLBracket:
 		return p.parseAssign()
 	case TokKeyword:
 		switch t.Text {
@@ -149,19 +164,46 @@ func (p *Parser) parseWrite() Stmt {
 	return Write{Expr: e}
 }
 
+func (p *Parser) parseBlockOrAssignment() Stmt {
+	start := p.pos
+	var assignment Stmt
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if _, ok := r.(parseError); !ok {
+					panic(r)
+				}
+				p.pos = start
+			}
+		}()
+		assignment = p.parseAssign()
+	}()
+	if assignment != nil {
+		return assignment
+	}
+	return p.parseBlock()
+}
+
 func (p *Parser) parseAssign() Stmt {
-	name := p.next().Text
+	target := p.parsePostfix()
 	op := ""
 	if p.is(TokBinop, "") {
 		op = p.next().Text
 	}
 	p.expect(TokAssign, "")
-	e := p.parseExpr()
+	value := p.parseExpr()
 	p.accept(TokSemi, "")
 	if op != "" {
-		e = Binop{Op: op, Left: Var{Name: name}, Right: e}
+		value = makeBinary(op, target, value)
 	}
-	return Assign{Name: name, Expr: e}
+	switch target := target.(type) {
+	case Var:
+		return Assign{Name: target.Name, Expr: value}
+	case Element:
+		return Set{Destination: target.Source, Index: target.Index, Value: value}
+	}
+	p.fail(p.peek(), "assignment requires a variable or an indexed value")
+	return nil
 }
 
 func (p *Parser) parseWhile() Stmt {
@@ -197,6 +239,8 @@ func (p *Parser) parseFor() Stmt {
 }
 
 func (p *Parser) parseIf() Stmt {
+	p.enter()
+	defer p.leave()
 	p.next() // "if" или "elif"
 	p.expect(TokLParen, "")
 	cond := p.parseExpr()
@@ -215,31 +259,128 @@ var precedence = map[string]int{
 	"!!": 1,
 	"&&": 2,
 	"==": 3, "!=": 3, "<": 3, "<=": 3, ">": 3, ">=": 3,
-	"+": 4, "-": 4,
-	"*": 5, "/": 5, "%": 5,
+	":": 4,
+	"+": 5, "-": 5,
+	"*": 6, "/": 6, "%": 6,
 }
 
 func (p *Parser) parseExpr() Expr {
 	return p.parseBinary(1)
 }
 
+func makeBinary(op string, left, right Expr) Expr {
+	if op == ":" {
+		return SExpression{Name: "cons", Arguments: []Expr{left, right}}
+	}
+	return Binop{Op: op, Left: left, Right: right}
+}
+
 func (p *Parser) parseBinary(minPrec int) Expr {
-	left := p.parsePrimary()
+	p.enter()
+	defer p.leave()
+	left := p.parsePostfix()
+	compared := false
 	for p.is(TokBinop, "") && precedence[p.peek().Text] >= minPrec {
-		op := p.next().Text
-		right := p.parseBinary(precedence[op] + 1)
-		left = Binop{Op: op, Left: left, Right: right}
+		token := p.next()
+		op := token.Text
+		prec := precedence[op]
+		if prec == 3 {
+			if compared {
+				p.fail(token, "comparison operators cannot be chained without parentheses")
+			}
+			compared = true
+		}
+		nextPrec := prec + 1
+		if op == ":" {
+			nextPrec = prec
+		}
+		right := p.parseBinary(nextPrec)
+		left = makeBinary(op, left, right)
 	}
 	return left
 }
 
+func (p *Parser) parsePostfix() Expr {
+	value := p.parsePrimary()
+	for {
+		if p.accept(TokLBracket, "") {
+			index := p.parseExpr()
+			p.expect(TokRBracket, "")
+			value = Element{Source: value, Index: index}
+		} else if p.accept(TokDot, "") {
+			p.expect(TokKeyword, "length")
+			value = Length{Source: value}
+		} else {
+			return value
+		}
+	}
+}
+
+func (p *Parser) parseItems(closing Kind, allowEmpty bool) []Expr {
+	var items []Expr
+	if p.is(closing, "") {
+		if !allowEmpty {
+			p.fail(p.peek(), "expected at least one expression")
+		}
+		p.next()
+		return items
+	}
+	for {
+		items = append(items, p.parseExpr())
+		if p.accept(closing, "") {
+			return items
+		}
+		p.expect(TokComma, "")
+	}
+}
+
 func (p *Parser) parsePrimary() Expr {
+	p.enter()
+	defer p.leave()
 	t := p.next()
 	switch t.Kind {
 	case TokIdent:
 		return Var{Name: t.Text}
-	case TokConst:
-		return Const{Value: t.Num}
+	case TokConst, TokCharacter:
+		if t.Num < minInteger || t.Num > maxInteger {
+			p.fail(t, "constant is outside the signed 32-bit range")
+		}
+		return Const{Value: int(t.Num)}
+	case TokBinop:
+		if t.Text == "-" {
+			number := p.expect(TokConst, "")
+			if t.End != number.Start {
+				p.fail(t, "a sign must be adjacent to its integer literal")
+			}
+			return Const{Value: int(-number.Num)}
+		}
+		if t.Text == "+" && p.allowEmptyArrays {
+			number := p.expect(TokConst, "")
+			if t.End != number.Start {
+				p.fail(t, "a sign must be adjacent to its integer literal")
+			}
+			if number.Num > maxInteger {
+				p.fail(number, "constant is outside the signed 32-bit range")
+			}
+			return Const{Value: int(number.Num)}
+		}
+	case TokString:
+		return String{Value: t.Text}
+	case TokConstructor:
+		var arguments []Expr
+		if p.accept(TokLParen, "") {
+			arguments = p.parseItems(TokRParen, false)
+		}
+		return SExpression{Name: t.Text, Arguments: arguments}
+	case TokLBracket:
+		return Array{Elements: p.parseItems(TokRBracket, p.allowEmptyArrays)}
+	case TokLBrace:
+		items := p.parseItems(TokRBrace, true)
+		var result Expr = SExpression{Name: "nil"}
+		for i := len(items) - 1; i >= 0; i-- {
+			result = SExpression{Name: "cons", Arguments: []Expr{items[i], result}}
+		}
+		return result
 	case TokLParen:
 		e := p.parseExpr()
 		p.expect(TokRParen, "")
