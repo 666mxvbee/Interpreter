@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-      <ProjectReference Include="..\Interpreter.Ast\Interpreter.Ast.csproj" />
+        <ProjectReference Include="..\Interpreter.Ast\Interpreter.Ast.csproj" />
+        <ProjectReference Include="..\..\..\Shared\src\Language.Runtime\Language.Runtime.csproj" />
     </ItemGroup>
 
     <PropertyGroup>
