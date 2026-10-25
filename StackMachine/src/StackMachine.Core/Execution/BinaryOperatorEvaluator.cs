@@ -6,11 +6,6 @@ namespace StackMachine.Core.Execution;
 
 internal static class BinaryOperatorEvaluator
 {
-    public static int Evaluate(BinaryOperator operation, int left, int right)
-    {
-        return Evaluate(operation, new IntegerValue(left), new IntegerValue(right)).AsInteger();
-    }
-
     public static RuntimeValue Evaluate(BinaryOperator operation, RuntimeValue left, RuntimeValue right)
     {
         string symbol = operation switch

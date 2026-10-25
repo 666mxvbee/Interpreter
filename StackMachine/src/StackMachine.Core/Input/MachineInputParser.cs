@@ -1,39 +1,22 @@
-﻿using System.Globalization;
+using Language.Runtime.Exceptions;
+using Language.Runtime.Input;
+using Language.Runtime.Values;
 
 namespace StackMachine.Core.Input;
 
 public static class MachineInputParser
 {
-    public static IReadOnlyList<int> Parse(string text)
+    public static IReadOnlyList<RuntimeValue> Parse(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
 
-        if (string.IsNullOrWhiteSpace(text))
+        try
         {
-            return Array.Empty<int>();
+            return ValueInputReader.Parse(text);
         }
-
-        string[] tokens = text.Split(',');
-        var values = new List<int>(tokens.Length);
-
-        for (int index = 0; index < tokens.Length; index++)
+        catch (LanguageRuntimeException exception)
         {
-            string token = tokens[index].Trim();
-
-            if (!int.TryParse(
-                    token,
-                    NumberStyles.AllowLeadingSign,
-                    CultureInfo.InvariantCulture,
-                    out int value))
-            {
-                throw new MachineInputException(
-                    $"Input item {index}: expected a 32-bit integer, "
-                    + $"got \"{token}\".");
-            }
-
-            values.Add(value);
+            throw new MachineInputException(exception.Message, exception);
         }
-
-        return values.ToArray();
     }
 }
