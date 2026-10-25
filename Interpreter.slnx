@@ -13,4 +13,8 @@
     <Folder Name="/Shared/">
         <Project Path="Shared/src/Language.Runtime/Language.Runtime.csproj" />
     </Folder>
+
+    <Folder Name="/Tests/">
+        <Project Path="Shared/tests/Language.Runtime.Tests/Language.Runtime.Tests.csproj" />
+    </Folder>
 </Solution>
