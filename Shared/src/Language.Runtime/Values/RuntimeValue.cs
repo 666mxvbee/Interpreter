@@ -4,8 +4,10 @@ namespace Language.Runtime.Values;
 
 public abstract class RuntimeValue
 {
-    public virtual int Length => throw new LanguageRuntimeException(
-        "Length requires an array, string, or S-expression");
+    public virtual int GetLength()
+    {
+        throw new LanguageRuntimeException("Length requires an array, string, or S-expression");
+    }
 
     public virtual int AsInteger()
     {

@@ -15,7 +15,12 @@ public sealed class ArrayValue : RuntimeValue
         }
     }
 
-    public override int Length => _elements.Length;
+    public int Length => _elements.Length;
+
+    public override int GetLength()
+    {
+        return Length;
+    }
 
     public override RuntimeValue GetElement(int index)
     {

@@ -13,9 +13,14 @@ public sealed class StringValue : RuntimeValue
         _bytes = Encoding.UTF8.GetBytes(value);
     }
 
-    public override int Length => _bytes.Length;
+    public int Length => _bytes.Length;
 
     public string Text => Encoding.UTF8.GetString(_bytes);
+
+    public override int GetLength()
+    {
+        return Length;
+    }
 
     public override RuntimeValue GetElement(int index)
     {
