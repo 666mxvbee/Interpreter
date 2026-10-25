@@ -1,3 +1,5 @@
+using Language.Runtime.Exceptions;
+using Language.Runtime.Formatting;
 using Language.Runtime.Values;
 
 namespace StackMachine.Core.Execution;
@@ -7,7 +9,7 @@ internal sealed class MachineState
     private readonly Stack<RuntimeValue> _stack = new();
     private readonly Dictionary<string, RuntimeValue> _memory = new(StringComparer.Ordinal);
     private readonly Queue<RuntimeValue> _input;
-    private readonly List<RuntimeValue> _output = new();
+    private readonly List<(RuntimeValue Value, int Instruction)> _output = new();
 
     public MachineState(IEnumerable<RuntimeValue> input)
     {
@@ -46,7 +48,7 @@ internal sealed class MachineState
 
     public void Write(RuntimeValue value)
     {
-        _output.Add(value);
+        _output.Add((value, ProgramCounter));
     }
 
     public void MoveNext()
@@ -62,6 +64,18 @@ internal sealed class MachineState
 
     public IReadOnlyList<RuntimeValue> CreateOutputSnapshot()
     {
-        return _output.ToArray();
+        foreach ((RuntimeValue value, int instruction) in _output)
+        {
+            try
+            {
+                RuntimeValueFormatter.Format(value);
+            }
+            catch (LanguageRuntimeException exception)
+            {
+                throw new MachineExecutionException($"{exception.Message} at instruction {instruction}", exception);
+            }
+        }
+
+        return _output.Select(item => item.Value).ToArray();
     }
 }
