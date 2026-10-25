@@ -83,9 +83,9 @@ python StackMachine/tests/regression.py --no-build
 The test project covers shared APIs, AST evaluation, machine execution, repeated
 machine runs, validation, depth limits, aliasing, and error propagation.
 
-`tests/Language.Runtime.Tests/Fixtures/reference.json` contains 38 saved source
+`tests/Language.Runtime.Tests/Fixtures/reference.json` contains 39 saved source
 programs with their generated AST, machine instructions, output, and errors.
-They were captured from both reference pages on 2026-10-25; the fixture metadata
+The reference runtime snapshot was captured on 2026-10-25; the fixture metadata
 records page URLs and the reference script's SHA-256 hash. Compatibility tests
 exercise both executors against this snapshot without network calls or Go
 binaries. The CLI regressions reuse the same cases to check observable output
