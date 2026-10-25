@@ -1,9 +1,16 @@
-﻿namespace StackMachine.Core.Execution;
+using Language.Runtime.Exceptions;
 
-public sealed class MachineExecutionException : Exception
+namespace StackMachine.Core.Execution;
+
+public sealed class MachineExecutionException : LanguageRuntimeException
 {
     public MachineExecutionException(string message)
         : base(message)
+    {
+    }
+
+    public MachineExecutionException(string message, Exception innerException)
+        : base(message, innerException)
     {
     }
 }
