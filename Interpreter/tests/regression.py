@@ -65,7 +65,7 @@ def execute(program, input_text="", input_file=False):
             input_path.write_text(input_text, encoding="utf-8")
             command.append(str(input_path))
         return subprocess.run(command, input="" if input_file else input_text,
-                              capture_output=True, text=True, timeout=20)
+                              capture_output=True, text=True, encoding="utf-8", timeout=20)
 
 
 class InterpreterTests(unittest.TestCase):
@@ -81,6 +81,7 @@ class InterpreterTests(unittest.TestCase):
         self.assertIn(category + ":", result.stderr)
         self.assertIn(message, result.stderr)
         self.assertNotIn("Unhandled exception", result.stderr)
+        self.assertEqual(result.stdout, "")
 
     def test_existing_and_new_examples(self):
         for name in ("countdown", "features", "strings-arrays", "nested-sum"):
@@ -92,13 +93,37 @@ class InterpreterTests(unittest.TestCase):
                 expected = (ROOT / "examples/output" / (name + ".txt")).read_text(encoding="utf-8-sig")
                 self.succeeds(program, expected.rstrip("\n") + "\n", input_text, input_file=True)
 
+    def test_saved_reference_programs(self):
+        path = ROOT.parent / "Shared/tests/Language.Runtime.Tests/Fixtures/reference.json"
+        fixtures = json.loads(path.read_text(encoding="utf-8"))["cases"]
+        for fixture in fixtures:
+            with self.subTest(reference=fixture["name"]):
+                program = json.loads(fixture["ast"]["json"])
+                if fixture["ast"]["error"]:
+                    self.fails(program, "Runtime error", fixture["input"])
+                else:
+                    self.succeeds(program, fixture["ast"]["output"] + "\n", fixture["input"])
+
+    def test_empty_input_array_and_list(self):
+        self.succeeds(sequence({"read": "a"}, {"read": "b"}, write(var("a")), write(var("b"))),
+                      "[], {}\n", "[], {}")
+
+    def test_empty_output_is_empty_stdout(self):
+        self.succeeds("skip", "")
+
+    def test_excessive_input_depth_is_controlled(self):
+        self.fails({"read": "a"}, "depth limit", "[" * 10000 + "1" + "]" * 10000)
+
+    def test_error_discards_previous_writes(self):
+        self.fails(sequence(write(const(1)), write(binary("/", const(1), const(0)))), "Division by zero")
+
     def test_integer_operations_and_overflow_are_preserved(self):
         cases = [("+", 2147483647, 1, -2147483648), ("-", -2147483648, 1, 2147483647),
                  ("*", 1073741824, 4, 0), ("/", -2147483648, -1, -2147483648),
                  ("%", -2147483648, -1, 0), ("/", -5, 2, -2), ("%", -5, 2, -1),
                  ("!!", 0, -3, 1), ("&&", 2, -3, 1)]
         self.succeeds(sequence(*(write(binary(op, const(a), const(b))) for op, a, b, _ in cases)),
-                      "".join(str(expected) + "\n" for _, _, _, expected in cases))
+                      ", ".join(str(expected) for _, _, _, expected in cases) + "\n")
 
     def test_logical_operators_still_evaluate_both_operands(self):
         for operator, left in (("!!", 1), ("&&", 0)):
@@ -113,12 +138,12 @@ class InterpreterTests(unittest.TestCase):
                                 set_element(element(a, 1), 0, const(9)),
                                 write(element(element(a, 1), 0)), write({"length": a}),
                                 set_element(a, 0, string("changed")), write(a)),
-                      "9\n3\n[changed; [9; 3]; x]\n")
+                      '9, 3, ["changed", [9, 3], "x"]\n')
 
     def test_array_aliases_share_mutations(self):
         self.succeeds(sequence(assign("a", array(array(const(1), const(2)))),
                                 assign("b", var("a")), assign("c", element(var("b"), 0)),
-                                set_element(var("c"), 1, const(7)), write(var("a"))), "[[1; 7]]\n")
+                                set_element(var("c"), 1, const(7)), write(var("a"))), "[[1, 7]]\n")
 
     def test_compound_element_assignment_uses_reference_ast(self):
         target = element(var("a"), 1)
@@ -132,7 +157,7 @@ class InterpreterTests(unittest.TestCase):
                         set_element(var("s"), 0, const(90)), set_element(var("a"), 0, const(9)),
                         assign("i", binary("+", var("i"), const(1))))
         self.succeeds(sequence(assign("i", const(0)), {"while": {
-            "cond": binary("<", var("i"), const(2)), "body": body}}), "a\n1\na\n1\n")
+            "cond": binary("<", var("i"), const(2)), "body": body}}), '"Z", 1, "Z", 1\n')
 
     def test_strings_are_mutable_utf8_bytes_and_share_aliases(self):
         self.succeeds(sequence(assign("s", string("abc")), assign("alias", var("s")),
@@ -140,11 +165,11 @@ class InterpreterTests(unittest.TestCase):
                                 set_element(var("s"), 0, const(90)), write(var("alias")),
                                 assign("unicode", string("Я")), write({"length": var("unicode")}),
                                 write(element(var("unicode"), 0)), write(element(var("unicode"), 1))),
-                      "97\nZbc\n2\n208\n175\n")
+                      '97, "Zbc", 2, 208, 175\n')
 
     def test_string_escapes_and_empty_string(self):
         self.succeeds(sequence(write(string('a"\\\nb')), write({"length": string("")}),
-                                write(string(""))), 'a"\\\nb\n0\n\n')
+                                write(string(""))), '"a"\\\nb", 0, ""\n')
 
     def test_strings_do_not_support_concatenation(self):
         self.fails(write(binary("+", string("a"), string("b"))), "integer")
@@ -167,7 +192,7 @@ class InterpreterTests(unittest.TestCase):
                  ("<", array(const(9)), array(const(1), const(2)), 1),
                  ("<", array(const(1), const(9)), array(const(2)), 0)]
         self.succeeds(sequence(*(write(binary(op, a, b)) for op, a, b, _ in cases)),
-                      "".join(str(expected) + "\n" for _, _, _, expected in cases))
+                      ", ".join(str(expected) for _, _, _, expected in cases) + "\n")
 
     def test_comparison_of_different_types_is_an_error(self):
         for left, right in ((const(1), string("1")), (string("1"), const(1)),
@@ -196,14 +221,14 @@ class InterpreterTests(unittest.TestCase):
     def test_input_preserves_whitespace_separated_signed_integers(self):
         self.succeeds(sequence({"read": "a"}, {"read": "b"}, {"read": "c"},
                                 write(var("a")), write(var("b")), write(var("c"))),
-                      "1\n-2\n3\n", "1\n -2\t+3")
+                      "1, -2, 3\n", "1\n -2\t+3")
 
     def test_input_supports_strings_and_nested_arrays(self):
         self.succeeds(sequence({"read": "s"}, {"read": "a"}, write(var("s")), write(var("a"))),
-                      'a"b\n[1; [-2; x]]\n', '"a\\"b", [1, [-2, "x"]]')
+                      '"a"b", [1, [-2, "x"]]\n', '"a\\"b", [1, [-2, "x"]]')
 
     def test_invalid_input_is_reported(self):
-        for value in ("", "[]", "[1,]", "[1,,2]", "[1 2]", "[1", "2147483648",
+        for value in ("", "[1,]", "[1,,2]", "[1 2]", "[1", "2147483648",
                       "1foo", '"x"junk', '[1]junk', '"unterminated', '"bad\\q"', '"raw\nnewline"'):
             with self.subTest(value=value):
                 self.fails({"read": "x"}, "Runtime error", value)
@@ -229,7 +254,7 @@ class InterpreterTests(unittest.TestCase):
         self.succeeds(sequence(assign("a", array(const(1))),
                                 assign("b", array(var("a"), var("a"))), write(var("b")),
                                 write(binary("==", var("b"), array(array(const(1)), array(const(1)))))),
-                      "[[1]; [1]]\n1\n")
+                      "[[1], [1]], 1\n")
 
     def test_cyclic_output_does_not_crash_the_process(self):
         self.fails(sequence(assign("a", array(const(1))), set_element(var("a"), 0, var("a")),
