@@ -12,7 +12,7 @@ public sealed class InterpreterEngine
 {
     private readonly RuntimeState _state;
     private readonly ExpressionEvaluator _expressionEvaluator;
-    private readonly ValueInputReader _input;
+    private readonly Queue<RuntimeValue> _input;
     private readonly TextWriter _output;
 
     public InterpreterEngine(TextReader input, TextWriter output)
@@ -21,7 +21,7 @@ public sealed class InterpreterEngine
         ArgumentNullException.ThrowIfNull(output);
         _state = new RuntimeState();
         _expressionEvaluator = new ExpressionEvaluator(_state);
-        _input = new ValueInputReader(input);
+        _input = new Queue<RuntimeValue>(ValueInputReader.Parse(input.ReadToEnd()));
         _output = output;
     }
 
@@ -49,7 +49,12 @@ public sealed class InterpreterEngine
                     ExecuteSet(set);
                     break;
                 case ReadStatement read:
-                    _state.SetValue(read.Destination, _input.Read());
+                    if (!_input.TryDequeue(out RuntimeValue? value))
+                    {
+                        throw new InterpreterRuntimeException("Input ended before a value could be read");
+                    }
+
+                    _state.SetValue(read.Destination, value);
                     break;
                 case WriteStatement write:
                     output.Add(_expressionEvaluator.Evaluate(write.Value));

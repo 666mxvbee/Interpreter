@@ -10,6 +10,22 @@ namespace Language.Runtime.Tests;
 
 public sealed class AstEngineTests
 {
+    [Theory]
+    [InlineData("[1,]")]
+    [InlineData("1,")]
+    [InlineData("1,,2")]
+    public void UnusedMalformedInputIsRejectedBeforeExecution(string text)
+    {
+        using var input = new StringReader(text);
+        using var output = new StringWriter();
+        Assert.ThrowsAny<LanguageRuntimeException>(() =>
+        {
+            var engine = new InterpreterEngine(input, output);
+            engine.Execute(new SkipStatement());
+        });
+        Assert.Empty(output.ToString());
+    }
+
     [Fact]
     public void LongStatementSequencesDoNotUseTheHostStack()
     {
