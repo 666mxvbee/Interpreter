@@ -8,7 +8,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 DOTNET = "dotnet"
-DLL = ROOT / "src/Interpreter.Cli/bin/Debug/net11.0/Interpreter.Cli.dll"
+DLL = None
 
 
 def const(value):
@@ -269,6 +269,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dotnet", default="dotnet")
     parser.add_argument("--no-build", action="store_true")
+    parser.add_argument("--dll", type=Path, help="Path to a previously built Interpreter.Cli.dll")
     arguments = parser.parse_args()
     DOTNET = arguments.dotnet
     if not arguments.no_build:
@@ -281,4 +282,15 @@ if __name__ == "__main__":
             ],
             check=True,
         )
+    if arguments.dll:
+        DLL = arguments.dll.resolve()
+    else:
+        result = subprocess.run(
+            [DOTNET, "msbuild", str(ROOT / "src/Interpreter.Cli/Interpreter.Cli.csproj"),
+             "-nologo", "-getProperty:TargetPath"],
+            capture_output=True, text=True, encoding="utf-8", check=True,
+        )
+        DLL = Path(result.stdout.strip())
+    if not DLL.is_file():
+        parser.error(f"Application not found: {DLL}. Build first or supply --dll.")
     unittest.main(argv=[__file__], verbosity=2)
