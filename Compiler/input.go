@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 func ParseInput(text string) (values []Value, err error) {
-	tokens, err := Lex(text)
+	tokens, err := lex(text, true)
 	if err != nil {
 		return nil, err
 	}

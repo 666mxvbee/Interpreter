@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 )
@@ -58,14 +59,19 @@ var singles = map[rune]Kind{
 }
 
 type Lexer struct {
-	src  []rune
-	pos  int
-	line int
-	col  int
+	src         []rune
+	pos         int
+	line        int
+	col         int
+	jsonStrings bool
 }
 
 func Lex(src string) ([]Token, error) {
-	lx := &Lexer{src: []rune(src), line: 1, col: 1}
+	return lex(src, false)
+}
+
+func lex(src string, jsonStrings bool) ([]Token, error) {
+	lx := &Lexer{src: []rune(src), line: 1, col: 1, jsonStrings: jsonStrings}
 	var toks []Token
 	for {
 		tok, err := lx.next()
@@ -202,6 +208,10 @@ func (lx *Lexer) next() (Token, error) {
 }
 
 func (lx *Lexer) stringToken(tok Token) (Token, error) {
+	if lx.jsonStrings {
+		return lx.inputStringToken(tok)
+	}
+
 	lx.advance()
 	value := []rune{}
 	for lx.pos < len(lx.src) {
@@ -217,6 +227,26 @@ func (lx *Lexer) stringToken(tok Token) (Token, error) {
 		value = append(value, c)
 	}
 	return tok, fmt.Errorf("%d:%d: unterminated string", tok.Line, tok.Col)
+}
+
+func (lx *Lexer) inputStringToken(tok Token) (Token, error) {
+	start := lx.pos
+	lx.advance()
+	escaped := false
+	for lx.pos < len(lx.src) {
+		character := lx.peek(0)
+		lx.advance()
+		if character == '"' && !escaped {
+			var value string
+			if err := json.Unmarshal([]byte(string(lx.src[start:lx.pos])), &value); err != nil {
+				return tok, fmt.Errorf("%d:%d: invalid input string: %w", tok.Line, tok.Col, err)
+			}
+			tok.Kind, tok.Text = TokString, value
+			return tok, nil
+		}
+		escaped = !escaped && character == '\\'
+	}
+	return tok, fmt.Errorf("%d:%d: unterminated input string", tok.Line, tok.Col)
 }
 
 func (lx *Lexer) characterToken(tok Token) (Token, error) {
