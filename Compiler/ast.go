@@ -1,5 +1,11 @@
 package main
 
+const (
+	minInteger      = -2147483648
+	maxInteger      = 2147483647
+	maxNestingDepth = 512
+)
+
 type Expr interface{ isExpr() }
 
 type Var struct{ Name string }
@@ -12,6 +18,21 @@ type Binop struct {
 func (Var) isExpr()   {}
 func (Const) isExpr() {}
 func (Binop) isExpr() {}
+
+type String struct{ Value string }
+type Array struct{ Elements []Expr }
+type Element struct{ Source, Index Expr }
+type Length struct{ Source Expr }
+type SExpression struct {
+	Name      string
+	Arguments []Expr
+}
+
+func (String) isExpr()      {}
+func (Array) isExpr()       {}
+func (Element) isExpr()     {}
+func (Length) isExpr()      {}
+func (SExpression) isExpr() {}
 
 type Stmt interface{ isStmt() }
 
@@ -38,6 +59,9 @@ type If struct {
 	Else Stmt
 }
 type Skip struct{}
+type Set struct{ Destination, Index, Value Expr }
+
+func (Set) isStmt() {}
 
 func (Read) isStmt()    {}
 func (Write) isStmt()   {}
