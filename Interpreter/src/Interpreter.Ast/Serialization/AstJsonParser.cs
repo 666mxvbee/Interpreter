@@ -6,7 +6,7 @@ namespace Interpreter.Ast.Serialization;
 
 public static class AstJsonParser
 {
-    private const int MaximumDepth = 4096;
+    private const int MaximumDepth = 512;
 
     public static Statement Parse(string json)
     {
@@ -149,6 +149,15 @@ public static class AstJsonParser
     {
         EnsureObject(element, path);
 
+        if (element.TryGetProperty("sexp", out JsonElement tag))
+        {
+            EnsureObjectPropertyCount(element, path, 2);
+
+            return new SExpressionExpression(
+                ParseTag(tag, $"{path}.sexp"),
+                ParseElements(GetRequiredProperty(element, "args", path), $"{path}.args", true));
+        }
+
         if (element.TryGetProperty("string", out JsonElement text))
         {
             EnsureObjectPropertyCount(element, path, 1);
@@ -220,9 +229,14 @@ public static class AstJsonParser
 
     private static ArrayExpression ParseArray(JsonElement element, string path)
     {
-        if (element.ValueKind != JsonValueKind.Array || element.GetArrayLength() == 0)
+        return new ArrayExpression(ParseElements(element, path, false));
+    }
+
+    private static Expression[] ParseElements(JsonElement element, string path, bool allowEmpty)
+    {
+        if (element.ValueKind != JsonValueKind.Array || (!allowEmpty && element.GetArrayLength() == 0))
         {
-            throw new AstJsonException($"{path}: expected a non-empty array of expressions");
+            throw new AstJsonException($"{path}: expected {(allowEmpty ? "an" : "a non-empty")} array of expressions");
         }
 
         var elements = new List<Expression>();
@@ -232,7 +246,25 @@ public static class AstJsonParser
             elements.Add(ParseExpression(item, $"{path}[{elements.Count}]"));
         }
 
-        return new ArrayExpression(elements);
+        return elements.ToArray();
+    }
+
+    private static string ParseTag(JsonElement element, string path)
+    {
+        if (element.ValueKind != JsonValueKind.String)
+        {
+            throw new AstJsonException($"{path}: expected a constructor tag");
+        }
+
+        string tag = element.GetString() ?? string.Empty;
+
+        if (tag.Length == 0 || !char.IsAsciiLetter(tag[0])
+            || tag.Skip(1).Any(character => !char.IsAsciiLetterOrDigit(character) && character is not '_' and not '\''))
+        {
+            throw new AstJsonException($"{path}: invalid constructor tag \"{tag}\"");
+        }
+
+        return tag;
     }
 
     private static BinaryOperator ParseBinaryOperator(
@@ -260,6 +292,7 @@ public static class AstJsonParser
             "*" => BinaryOperator.Multiply,
             "/" => BinaryOperator.Divide,
             "%" => BinaryOperator.Remainder,
+            ":" => BinaryOperator.Cons,
 
             var value => throw new AstJsonException(
                 $"{path}: unknown binary operator {value}"),

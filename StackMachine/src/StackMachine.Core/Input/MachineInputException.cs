@@ -1,9 +1,16 @@
-﻿namespace StackMachine.Core.Input;
+using Language.Runtime.Exceptions;
 
-public sealed class MachineInputException : Exception
+namespace StackMachine.Core.Input;
+
+public sealed class MachineInputException : LanguageRuntimeException
 {
     public MachineInputException(string message)
         : base(message)
+    {
+    }
+
+    public MachineInputException(string message, Exception innerException)
+        : base(message, innerException)
     {
     }
 }

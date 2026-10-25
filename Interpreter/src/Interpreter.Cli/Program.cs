@@ -1,7 +1,7 @@
-﻿using Interpreter.Ast.Serialization;
+using Interpreter.Ast.Serialization;
 using Interpreter.Ast.Statements;
 using Interpreter.Runtime;
-using Interpreter.Runtime.Exceptions;
+using Language.Runtime.Exceptions;
 using System.Text.Json;
 
 namespace Interpreter.Cli;
@@ -14,7 +14,7 @@ public static class Program
 
     public static int Main(string[] args)
     {
-        if (args.Length is < 1 or > 2)
+        if (args.Length is < 1 or > 2 || args[0] is "-h" or "--help")
         {
             WriteUsage();
 
@@ -57,7 +57,7 @@ public static class Program
         {
             return ReportError("Invalid AST", exception);
         }
-        catch (InterpreterRuntimeException exception)
+        catch (LanguageRuntimeException exception)
         {
             return ReportError("Runtime error", exception);
         }
@@ -68,6 +68,10 @@ public static class Program
         catch (IOException exception)
         {
             return ReportError("I/O error", exception);
+        }
+        catch (ArgumentException exception)
+        {
+            return ReportError("Invalid argument", exception);
         }
     }
 
