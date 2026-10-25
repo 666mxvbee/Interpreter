@@ -272,5 +272,13 @@ if __name__ == "__main__":
     arguments = parser.parse_args()
     DOTNET = arguments.dotnet
     if not arguments.no_build:
-        subprocess.run([DOTNET, "build", str(ROOT / "Interpreter.slnx"), "--nologo"], check=True)
+        subprocess.run(
+            [
+                DOTNET,
+                "build",
+                str(ROOT.parent / "Interpreter.slnx"),
+                "--nologo",
+            ],
+            check=True,
+        )
     unittest.main(argv=[__file__], verbosity=2)
