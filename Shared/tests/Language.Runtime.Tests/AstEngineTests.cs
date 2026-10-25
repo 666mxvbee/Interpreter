@@ -85,7 +85,7 @@ public sealed class AstEngineTests
     [InlineData("{\"set\":{\"dst\":{\"var\":\"missing\"},\"idx\":{\"const\":0},\"value\":{\"binop\":\"/\",\"left\":{\"const\":1},\"right\":{\"const\":0}}}}")]
     public void EvaluationOrderMatchesTheAstReference(string json)
     {
-        var program = AstJsonParser.Parse(json);
+        Statement program = AstJsonParser.Parse(json);
         using var input = new StringReader(string.Empty);
         using var output = new StringWriter();
         var engine = new InterpreterEngine(input, output);

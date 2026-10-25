@@ -1,10 +1,12 @@
 using Interpreter.Ast.Serialization;
+using Interpreter.Ast.Statements;
 using Interpreter.Runtime;
 using Language.Runtime.Exceptions;
 using Language.Runtime.Formatting;
 using Language.Runtime.Input;
 using Language.Runtime.Values;
 using StackMachine.Core.Execution;
+using StackMachine.Core.Instructions;
 using StackMachine.Core.Serialization;
 using System.Text.Json;
 using Xunit;
@@ -42,7 +44,7 @@ public sealed class ReferenceCompatibilityTests
 
         if (executor == "ast")
         {
-            var program = AstJsonParser.Parse(json);
+            Statement program = AstJsonParser.Parse(json);
             using var source = new StringReader(input);
             using var destination = new StringWriter();
             var engine = new InterpreterEngine(source, destination);
@@ -60,7 +62,7 @@ public sealed class ReferenceCompatibilityTests
         }
         else
         {
-            var program = MachineProgramJsonParser.Parse(json);
+            IReadOnlyList<Instruction> program = MachineProgramJsonParser.Parse(json);
             IReadOnlyList<RuntimeValue> values = ValueInputReader.Parse(input);
             var engine = new StackMachineEngine();
 

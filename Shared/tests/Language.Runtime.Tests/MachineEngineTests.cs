@@ -75,7 +75,7 @@ public sealed class MachineEngineTests
     [Fact]
     public void AggregateCreationPreservesOrderAndSupportsZeroArity()
     {
-        var program = MachineProgramJsonParser.Parse(
+        IReadOnlyList<Instruction> program = MachineProgramJsonParser.Parse(
             "[{\"CONST\":1},{\"CONST\":2},{\"ARRAY\":2},\"WRITE\",{\"ARRAY\":0},\"WRITE\",{\"SEXP\":[\"Nil\",0]},\"WRITE\"]");
         var engine = new StackMachineEngine();
         Assert.Equal("[1, 2], [], Nil", RuntimeValueFormatter.FormatOutput(engine.Execute(program, Array.Empty<RuntimeValue>())));
