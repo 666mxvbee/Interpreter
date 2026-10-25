@@ -84,7 +84,7 @@ class InterpreterTests(unittest.TestCase):
         self.assertEqual(result.stdout, "")
 
     def test_existing_and_new_examples(self):
-        for name in ("countdown", "features", "strings-arrays", "nested-sum"):
+        for name in ("countdown", "features", "strings-arrays", "nested-sum", "constructors"):
             with self.subTest(example=name):
                 directory = ROOT / "examples/input" / name
                 program = json.loads((directory / "program.json").read_text(encoding="utf-8-sig"))
