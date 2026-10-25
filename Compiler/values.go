@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 type Value interface{ isValue() }
@@ -228,7 +229,7 @@ func formatActiveValue(value Value, active map[Value]bool, depth int) (string, e
 	case IntegerValue:
 		return strconv.FormatInt(int64(scalar), 10), nil
 	case *StringValue:
-		return "\"" + strings.ToValidUTF8(string(scalar.Bytes), "\uFFFD") + "\"", nil
+		return "\"" + decodeUTF8Bytes(scalar.Bytes) + "\"", nil
 	}
 	if active[value] {
 		return "", fmt.Errorf("cannot write a cyclic value")
@@ -259,6 +260,52 @@ func formatActiveValue(value Value, active map[Value]bool, depth int) (string, e
 		return value.Name + " (" + arguments + ")", nil
 	}
 	return "", fmt.Errorf("unknown runtime value")
+}
+
+func decodeUTF8Bytes(data []byte) string {
+	var result strings.Builder
+	for len(data) > 0 {
+		character, size := utf8.DecodeRune(data)
+		if character != utf8.RuneError || size > 1 {
+			result.Write(data[:size])
+			data = data[size:]
+			continue
+		}
+
+		// Replace each maximal invalid subpart, including a truncated valid prefix.
+		first := data[0]
+		if first >= 0xC2 && first <= 0xF4 {
+			expected := 2
+			if first >= 0xE0 {
+				expected = 3
+			}
+			if first >= 0xF0 {
+				expected = 4
+			}
+			for size < expected && size < len(data) {
+				lower, upper := byte(0x80), byte(0xBF)
+				if size == 1 {
+					switch first {
+					case 0xE0:
+						lower = 0xA0
+					case 0xED:
+						upper = 0x9F
+					case 0xF0:
+						lower = 0x90
+					case 0xF4:
+						upper = 0x8F
+					}
+				}
+				if data[size] < lower || data[size] > upper {
+					break
+				}
+				size++
+			}
+		}
+		result.WriteRune(utf8.RuneError)
+		data = data[size:]
+	}
+	return result.String()
 }
 
 func formatElements(values []Value, active map[Value]bool, depth int) (string, error) {
