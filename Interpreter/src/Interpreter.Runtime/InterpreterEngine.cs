@@ -28,6 +28,20 @@ public sealed class InterpreterEngine
     public void Execute(Statement statement)
     {
         ArgumentNullException.ThrowIfNull(statement);
+        int scopeDepth = _state.ScopeDepth;
+
+        try
+        {
+            ExecuteStatements(statement);
+        }
+        finally
+        {
+            _state.RestoreScopeDepth(scopeDepth);
+        }
+    }
+
+    private void ExecuteStatements(Statement statement)
+    {
         var pending = new Stack<Statement>();
         var output = new List<RuntimeValue>();
         pending.Push(statement);
@@ -37,6 +51,9 @@ public sealed class InterpreterEngine
             switch (current)
             {
                 case SkipStatement:
+                    break;
+                case ExitScopeStatement:
+                    _state.PopScope();
                     break;
                 case SequenceStatement sequence:
                     pending.Push(sequence.Right);
@@ -64,6 +81,9 @@ public sealed class InterpreterEngine
                         ? conditional.ThenBranch
                         : conditional.ElseBranch);
                     break;
+                case SwitchStatement selection:
+                    ExecuteSwitch(selection, pending);
+                    break;
                 case WhileStatement loop:
                     if (_expressionEvaluator.Evaluate(loop.Condition).AsInteger() != 0)
                     {
@@ -88,6 +108,28 @@ public sealed class InterpreterEngine
         }
     }
 
+    private void ExecuteSwitch(SwitchStatement statement, Stack<Statement> pending)
+    {
+        RuntimeValue value = _expressionEvaluator.Evaluate(statement.Scrutinee);
+
+        foreach (SwitchBranch branch in statement.Branches)
+        {
+            IReadOnlyDictionary<string, RuntimeValue>? bindings = PatternMatcher.Match(branch.Pattern, value);
+
+            if (bindings is null)
+            {
+                continue;
+            }
+
+            _state.PushScope(bindings);
+            pending.Push(new ExitScopeStatement());
+            pending.Push(branch.Body);
+            return;
+        }
+
+        throw new InterpreterRuntimeException($"match failure on {RuntimeValueFormatter.Format(value)}");
+    }
+
     private void ExecuteSet(SetStatement statement)
     {
         RuntimeValue value = _expressionEvaluator.Evaluate(statement.Value);
@@ -95,4 +137,6 @@ public sealed class InterpreterEngine
         RuntimeValue destination = _expressionEvaluator.Evaluate(statement.Destination);
         destination.SetElement(index.AsInteger(), value);
     }
+
+    private sealed record ExitScopeStatement : Statement;
 }
