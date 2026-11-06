@@ -55,7 +55,7 @@ execution, or perform I/O. For example:
 | Constructor | `{"sexp": "Cons", "args": [{"const": 1}, {"sexp": "Nil", "args": []}]}` |
 
 Statements include `"skip"`, `seq`, `assn`, `set`, `read`, `write`, `if`,
-`while`, and `do`. Element assignment uses:
+`while`, `do`, and `switch`. Element assignment uses:
 
 ~~~json
 {
@@ -77,6 +77,94 @@ Binary expressions evaluate the right operand first; element access evaluates
 the index expression before its source. Element assignment evaluates the value,
 then the index expression, then the destination, before checking the index type
 and bounds. These choices preserve the reference's error order.
+
+## Switch and pattern matching
+
+The AST interpreter supports the reference `switch` extension observed on
+2026-11-06. This change applies to the C# AST interpreter only. The reference
+compiler does not yet compile `switch`; the Go compiler and both stack machines
+retain their existing instruction set.
+
+~~~text
+{
+    x = 100;
+    switch (Pair(1, 2)) {
+        case Pair(x, y) -> write(x + y);
+        | case _ -> write(0);
+    }
+    write(x);
+}
+~~~
+
+Expected output is `3, 100`. Obtain executable JSON AST from
+the [reference frontend](https://dboulytchev.github.io/eval.html), then pass it
+to the interpreter CLI as usual. Source text is not accepted by this CLI.
+
+A standalone switch statement has this JSON shape:
+
+~~~json
+{
+  "switch": {
+    "scrutinee": {"sexp": "Pair", "args": [{"const": 1}, {"const": 2}]},
+    "branches": [
+      {
+        "pattern": {
+          "sexp": "Pair",
+          "args": [
+            {"bind": {"name": "x", "pattern": {"wildcard": []}}},
+            {"bind": {"name": "y", "pattern": {"wildcard": []}}}
+          ]
+        },
+        "branch": {"write": {"binop": "+", "left": {"var": "x"}, "right": {"var": "y"}}}
+      },
+      {"pattern": {"wildcard": []}, "branch": {"write": {"const": 0}}}
+    ]
+  }
+}
+~~~
+
+This standalone JSON prints `3`; it omits the surrounding assignment and write
+from the source example. Patterns are distinct AST nodes from expressions:
+
+| Source pattern | JSON pattern |
+| --- | --- |
+| `_` | `{"wildcard": []}` |
+| `x` | `{"bind": {"name": "x", "pattern": {"wildcard": []}}}` |
+| `x @ #int` | `{"bind": {"name": "x", "pattern": "#int"}}` |
+| `42` or a character with code 42 | `42` |
+| `"hello"` | `"hello"` |
+| `[_, _]` | `{"array": [{"wildcard": []}, {"wildcard": []}]}` |
+| `Pair(_, _)` | `{"sexp": "Pair", "args": [{"wildcard": []}, {"wildcard": []}]}` |
+| `{}` | `{"sexp": "nil", "args": []}` |
+| `#int`, `#string`, `#array`, `#sexp` | The corresponding JSON string |
+
+List patterns and `head : tail` use nested `cons`/`nil` S-expression patterns.
+Array patterns require an exact length; constructor patterns require an exact
+tag and argument count. String literals compare UTF-8 bytes, while character
+patterns compare integer codes. The reference parser accepts integer patterns
+even though its displayed `patternPrimary` grammar omits `CONST`.
+
+The scrutinee is evaluated once. Branches are tried in source order, and only
+the first matching branch executes. No match produces a `match failure on ...`
+language error, discarding buffered output. Bindings are collected separately
+until a whole pattern succeeds. Repeated names overwrite earlier bindings in
+left-to-right matching order; an `x @ pattern` binding is installed after its
+inner pattern matches.
+
+`RuntimeState` maintains a stack of dictionaries. Pattern variables belong to
+a temporary scope, shadow outer variables, and disappear on leaving the branch.
+Nested switches add nested scopes. Assignment and `read` update the nearest
+existing binding; a previously unknown name is created in the global scope,
+matching the reference. Mutations through bound strings, arrays, and
+S-expressions remain visible through their other references. Scope cleanup also
+runs after execution errors. Ordinary blocks do not introduce new scopes.
+
+Pattern matching uses an explicit work stack and the existing runtime depth
+limit. Pattern JSON uses the existing strict shape validation and JSON depth
+limit. The reference JSON format represents both a type pattern and a literal
+string equal to `"#int"`, `"#string"`, `"#array"`, or `"#sexp"` identically;
+these four JSON strings are interpreted as type patterns because their original
+source spelling cannot be recovered from the exported AST.
 
 ## Values and operations
 

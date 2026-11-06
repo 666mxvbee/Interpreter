@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace Interpreter.Ast.Serialization;
 
-public static class AstJsonParser
+public static partial class AstJsonParser
 {
     private const int MaximumDepth = 512;
 
@@ -49,6 +49,7 @@ public static class AstJsonParser
             "while" => ParseWhile(property.Value, propertyPath),
             "do" => ParseDoWhile(property.Value, propertyPath),
             "if" => ParseIf(property.Value, propertyPath),
+            "switch" => ParseSwitch(property.Value, propertyPath),
 
             _ => throw new AstJsonException(
                 $"{path}: unknown statement {property.Name}"),
